@@ -2,247 +2,256 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>課表與借還時間管理系統</title>
+  <title>多教室獨立課表與格位管理系統</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f6f9; }
-    h1, h2 { color: #333; margin: 0; }
     .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
     .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    
+    /* 教室頁籤 Style */
+    .tabs-container { display: flex; gap: 8px; border-bottom: 2px solid #ccc; padding-bottom: 0; margin-bottom: 20px; overflow-x: auto; }
+    .tab-btn { padding: 10px 20px; background: #e9ecef; border: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; color: #495057; }
+    .tab-btn.active { background: #007bff; color: white; }
+    .tab-add-btn { background: #28a745; color: white; border-radius: 6px; padding: 10px 15px; border: none; cursor: pointer; }
+
+    /* 課表方格與表格 */
     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-    th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+    th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
     th { background-color: #007bff; color: white; }
-    input[type="text"], input[type="file"] { padding: 6px; margin: 4px; }
-    button { background-color: #28a745; color: white; border: none; padding: 8px 14px; cursor: pointer; border-radius: 4px; font-size: 14px; margin: 2px; }
-    button:hover { opacity: 0.9; }
-    .btn-danger { background-color: #dc3545; }
-    .btn-warning { background-color: #ffc107; color: #333; }
-    .btn-info { background-color: #17a2b8; }
-    .hint { color: #666; font-size: 13px; line-height: 1.5; }
-    .format-box { background: #e9ecef; padding: 10px; border-radius: 4px; font-family: monospace; }
-    .form-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
+    
+    .btn-danger { background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+    .btn-warning { background-color: #ffc107; color: #333; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+    .btn-primary { background-color: #007bff; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; }
+    input[type="text"], input[type="number"], input[type="file"] { padding: 6px; margin: 4px; }
+    .hint { color: #666; font-size: 13px; }
+    .format-box { background: #e9ecef; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 13px; }
   </style>
 </head>
 <body>
 
   <div class="header-bar">
-    <h1>課表與借還時間管理</h1>
+    <h1>多教室課表管理系統</h1>
     <button class="btn-danger" onclick="logout()" style="padding: 10px 18px;">登出系統</button>
   </div>
 
-  <!-- 1. Excel / CSV 批次檔案上傳區塊 -->
-  <div class="card">
-    <h2>1. 批次匯入 Excel / CSV 檔</h2>
-    <p class="hint">支援上傳 <code>.xlsx</code>、<code>.xls</code> 或 <code>.csv</code> 檔案。</p>
-    
-    <div class="format-box">
-      <strong>Excel 欄位順序要求：</strong><br>
-      [A] 教室 (1-8) | [B] 星期 (1-7) | [C] 借時間 | [D] 還時間 | [E] 班級 | [F] 教師 (選填)
-    </div>
-
-    <br>
-    <input type="file" id="excelFile" accept=".xlsx, .xls, .csv">
-    <button onclick="uploadExcel()">開始匯入檔案</button>
+  <!-- 1. 教室頁籤分頁區 -->
+  <div class="tabs-container" id="tabsContainer">
+    <!-- 動態生成教室分頁按鈕 -->
   </div>
 
-  <!-- 2. 手動新增 / 編輯區塊 -->
-  <div class="card">
-    <h2 id="formTitle">2. 手動新增 / 編輯單筆課表</h2>
-    <input type="hidden" id="editId">
-    <div class="form-row">
-      <input type="text" id="inputClassroom" placeholder="教室 (例如: 101)" style="width: 120px;">
-      <input type="text" id="inputDay" placeholder="星期 (例如: 1)" style="width: 100px;">
-      <input type="text" id="inputBorrow" placeholder="借時間 (例如: 08:00)" style="width: 120px;">
-      <input type="text" id="inputReturn" placeholder="還時間 (例如: 09:00)" style="width: 120px;">
-      <input type="text" id="inputClass" placeholder="班級 (例如: 資訊一甲)" style="width: 140px;">
-      <input type="text" id="inputTeacher" placeholder="教師 (選填)" style="width: 120px;">
-      <button onclick="saveRecord()">儲存紀錄</button>
-      <button class="btn-warning" onclick="resetForm()">清空輸入欄</button>
-    </div>
-  </div>
-
-  <!-- 3. 目前課表預覽 -->
-  <div class="card">
+  <!-- 2. 當前教室設定與管理 -->
+  <div class="card" id="classroomConfigCard">
     <div style="display: flex; justify-content: space-between; align-items: center;">
-      <h2>3. 已匯入課表清單</h2>
-      <div>
-        <button class="btn-info" onclick="loadSchedule()">重新整理</button>
-        <button class="btn-danger" onclick="clearAll()">清空全部課表</button>
-      </div>
+      <h2 id="currentClassroomTitle">教室設定</h2>
+      <button class="btn-danger" onclick="deleteCurrentClassroom()">刪除此教室</button>
     </div>
+    <div style="margin-top: 10px;">
+      <label>教室名稱：</label>
+      <input type="text" id="editName" placeholder="例如: 101 教室">
+      <label>每日節次/格位數：</label>
+      <input type="number" id="editSlots" min="1" max="15" value="8" style="width: 70px;">
+      <button class="btn-primary" onclick="saveClassroomConfig()">更新設定</button>
+    </div>
+  </div>
 
-    <table id="scheduleTable">
+  <!-- 3. 匯入專屬 CSV 區塊 -->
+  <div class="card">
+    <h3>匯入此教室的 CSV / Excel 課表</h3>
+    <div class="format-box">
+      <strong>CSV 欄位格式範例：</strong><br>
+      星期 (1-7), 節次 (1-8), 班級名稱, 教師名稱<br>
+      <em>範例：1, 2, 資訊一甲, 張老師</em>
+    </div>
+    <br>
+    <input type="file" id="csvFileInput" accept=".csv, .xlsx, .xls">
+    <button class="btn-primary" onclick="uploadCsv()">上傳並帶入課表</button>
+    <button class="btn-warning" onclick="clearSchedule()">清空此教室課表</button>
+  </div>
+
+  <!-- 4. 格位課表預覽 -->
+  <div class="card">
+    <h3>課表格位預覽</h3>
+    <table id="gridTable">
       <thead>
         <tr>
-          <th>教室</th>
-          <th>星期</th>
-          <th>借時間</th>
-          <th>還時間</th>
-          <th>班級</th>
-          <th>教師</th>
-          <th>操作</th>
+          <th>節次 / 格位</th>
+          <th>星期一</th>
+          <th>星期二</th>
+          <th>星期三</th>
+          <th>星期四</th>
+          <th>星期五</th>
         </tr>
       </thead>
-      <tbody>
-        <tr><td colspan="7">尚無資料，請先匯入。</td></tr>
+      <tbody id="gridBody">
+        <!-- 動態繪製課表格位 -->
       </tbody>
     </table>
   </div>
 
   <script>
-    let currentData = {};
+    let classrooms = {};
+    let activeClassroomIndex = null;
 
-    // 讀取所有課表資料
-    async function loadSchedule() {
-      const res = await fetch('/api/schedule');
+    // 讀取所有教室資料
+    async function loadClassrooms() {
+      const res = await fetch('/api/classrooms');
       const result = await res.json();
-      const tbody = document.querySelector('#scheduleTable tbody');
-      tbody.innerHTML = '';
-      currentData = result.data || {};
-
-      if (result.success && Object.keys(currentData).length > 0) {
-        for (const [id, item] of Object.entries(currentData)) {
-          const row = `<tr>
-            <td>教室 ${item.classroom}</td>
-            <td>星期 ${item.day}</td>
-            <td>${item.borrowTime}</td>
-            <td>${item.returnTime}</td>
-            <td>${item.className || '-'}</td>
-            <td>${item.teacher || '-'}</td>
-            <td>
-              <button class="btn-warning" onclick="editRecord('${id}')">編輯</button>
-              <button class="btn-danger" onclick="deleteRecord('${id}')">刪除</button>
-            </td>
-          </tr>`;
-          tbody.innerHTML += row;
+      if (result.success) {
+        classrooms = result.data;
+        const keys = Object.keys(classrooms);
+        if (keys.length > 0 && !activeClassroomIndex) {
+          activeClassroomIndex = keys[0];
         }
-      } else {
-        tbody.innerHTML = '<tr><td colspan="7">目前尚無資料</td></tr>';
+        renderTabs();
+        renderCurrentClassroom();
       }
     }
 
-    // 上傳 Excel 檔案
-    async function uploadExcel() {
-      const fileInput = document.getElementById('excelFile');
+    // 渲染分頁 Tab
+    function renderTabs() {
+      const container = document.getElementById('tabsContainer');
+      container.innerHTML = '';
+
+      for (const [id, room] of Object.entries(classrooms)) {
+        const btn = document.createElement('button');
+        btn.className = `tab-btn ${id === activeClassroomIndex ? 'active' : ''}`;
+        btn.innerText = room.name;
+        btn.onclick = () => {
+          activeClassroomIndex = id;
+          renderTabs();
+          renderCurrentClassroom();
+        };
+        container.appendChild(btn);
+      }
+
+      // 新增教室按鈕
+      const addBtn = document.createElement('button');
+      addBtn.className = 'tab-add-btn';
+      addBtn.innerText = '+ 新增教室';
+      addBtn.onclick = addNewClassroom;
+      container.appendChild(addBtn);
+    }
+
+    // 渲染目前選中的教室內容與格位
+    function renderCurrentClassroom() {
+      const room = classrooms[activeClassroomIndex];
+      if (!room) return;
+
+      document.getElementById('currentClassroomTitle').innerText = `教室設定：${room.name}`;
+      document.getElementById('editName').value = room.name;
+      document.getElementById('editSlots').value = room.slots || 8;
+
+      // 繪製格位表 (Grid)
+      const tbody = document.getElementById('gridBody');
+      tbody.innerHTML = '';
+
+      const slotsCount = parseInt(room.slots) || 8;
+      for (let slot = 1; slot <= slotsCount; slot++) {
+        let tr = `<tr><td><strong>第 ${slot} 節</strong></td>`;
+        for (let day = 1; day <= 5; day++) {
+          const key = `${day}_${slot}`;
+          const item = room.schedule ? room.schedule[key] : null;
+          if (item) {
+            tr += `<td style="background-color: #e3f2fd;">
+              <strong>${item.className}</strong><br>
+              <small style="color:#666;">${item.teacher || ''}</small>
+            </td>`;
+          } else {
+            tr += `<td style="color:#ccc;">-</td>`;
+          }
+        }
+        tr += `</tr>`;
+        tbody.innerHTML += tr;
+      }
+    }
+
+    // 新增教室
+    async function addNewClassroom() {
+      const name = prompt('請輸入新教室名稱：', '新教室');
+      if (!name) return;
+
+      const res = await fetch('/api/classrooms/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, slots: 8 })
+      });
+      const result = await res.json();
+      if (result.success) {
+        activeClassroomIndex = result.id;
+        loadClassrooms();
+      }
+    }
+
+    // 儲存教室設定 (改名、變更格位數)
+    async function saveClassroomConfig() {
+      const name = document.getElementById('editName').value.trim();
+      const slots = document.getElementById('editSlots').value;
+
+      const res = await fetch('/api/classrooms/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: activeClassroomIndex, name, slots })
+      });
+      const result = await res.json();
+      alert(result.message);
+      if (result.success) loadClassrooms();
+    }
+
+    // 刪除目前教室
+    async function deleteCurrentClassroom() {
+      if (!confirm(`確定要刪除「${classrooms[activeClassroomIndex].name}」嗎？此動作無法復原！`)) return;
+
+      const res = await fetch(`/api/classrooms/${activeClassroomIndex}`, { method: 'DELETE' });
+      const result = await res.json();
+      alert(result.message);
+      if (result.success) {
+        activeClassroomIndex = null;
+        loadClassrooms();
+      }
+    }
+
+    // 獨立上傳該教室的 CSV/Excel
+    async function uploadCsv() {
+      const fileInput = document.getElementById('csvFileInput');
       if (!fileInput.files[0]) {
-        alert('請先選擇 Excel 或 CSV 檔案！');
+        alert('請先選擇 CSV 或 Excel 檔案！');
         return;
       }
 
       const formData = new FormData();
       formData.append('file', fileInput.files[0]);
 
-      try {
-        const res = await fetch('/api/schedule/upload-excel', {
-          method: 'POST',
-          body: formData
-        });
-        const result = await res.json();
-        alert(result.message);
-        if (result.success) {
-          fileInput.value = '';
-          loadSchedule();
-        }
-      } catch (err) {
-        alert('上傳失敗：' + err.message);
-      }
-    }
-
-    // 儲存單筆紀錄 (新增或編輯)
-    async function saveRecord() {
-      const id = document.getElementById('editId').value;
-      const classroom = document.getElementById('inputClassroom').value.trim();
-      const day = document.getElementById('inputDay').value.trim();
-      const borrowTime = document.getElementById('inputBorrow').value.trim();
-      const returnTime = document.getElementById('inputReturn').value.trim();
-      const className = document.getElementById('inputClass').value.trim();
-      const teacher = document.getElementById('inputTeacher').value.trim();
-
-      if (!classroom || !day || !borrowTime || !returnTime || !className) {
-        alert('請填寫完整資訊 (教室、星期、借/還時間、班級)！');
-        return;
-      }
-
-      const res = await fetch('/api/schedule/save', {
+      const res = await fetch(`/api/classrooms/${activeClassroomIndex}/upload-csv`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, classroom, day, borrowTime, returnTime, className, teacher })
+        body: formData
       });
       const result = await res.json();
       alert(result.message);
       if (result.success) {
-        resetForm();
-        loadSchedule();
+        fileInput.value = '';
+        loadClassrooms();
       }
     }
 
-    // 填入資料進行編輯
-    function editRecord(id) {
-      const item = currentData[id];
-      if (!item) return;
-
-      document.getElementById('editId').value = id;
-      document.getElementById('inputClassroom').value = item.classroom;
-      document.getElementById('inputDay').value = item.day;
-      document.getElementById('inputBorrow').value = item.borrowTime;
-      document.getElementById('inputReturn').value = item.returnTime;
-      document.getElementById('inputClass').value = item.className;
-      document.getElementById('inputTeacher').value = item.teacher || '';
-
-      document.getElementById('formTitle').innerText = '2. 編輯單筆課表 (修改中)';
-    }
-
-    // 清空表單輸入框
-    function resetForm() {
-      document.getElementById('editId').value = '';
-      document.getElementById('inputClassroom').value = '';
-      document.getElementById('inputDay').value = '';
-      document.getElementById('inputBorrow').value = '';
-      document.getElementById('inputReturn').value = '';
-      document.getElementById('inputClass').value = '';
-      document.getElementById('inputTeacher').value = '';
-      document.getElementById('formTitle').innerText = '2. 手動新增 / 編輯單筆課表';
-    }
-
-    // 刪除單筆資料
-    async function deleteRecord(id) {
-      if (!confirm('確定要刪除這筆課表紀錄嗎？')) return;
-
-      const res = await fetch(`/api/schedule/${id}`, { method: 'DELETE' });
+    // 清空課表
+    async function clearSchedule() {
+      if (!confirm('確定要清空這間教室的課表嗎？')) return;
+      const res = await fetch(`/api/classrooms/${activeClassroomIndex}/clear-schedule`, { method: 'DELETE' });
       const result = await res.json();
       alert(result.message);
-      if (result.success) loadSchedule();
+      if (result.success) loadClassrooms();
     }
 
-    // 清空全部資料
-    async function clearAll() {
-      if (!confirm('警告：確定要清空「所有」課表資料嗎？此操作無法復原！')) return;
-
-      const res = await fetch('/api/schedule-all', { method: 'DELETE' });
-      const result = await res.json();
-      alert(result.message);
-      if (result.success) loadSchedule();
-    }
-
-    // 登出功能
+    // 登出
     async function logout() {
-      if (!confirm('確定要登出系統嗎？')) return;
-
-      try {
-        const res = await fetch('/api/logout', { method: 'POST' });
-        const result = await res.json();
-        if (result.success) {
-          alert('已成功登出！');
-          window.location.href = '/index.html';
-        } else {
-          alert('登出失敗：' + result.message);
-        }
-      } catch (err) {
-        alert('發生錯誤：' + err.message);
-      }
+      if (!confirm('確定要登出嗎？')) return;
+      const res = await fetch('/api/logout', { method: 'POST' });
+      const result = await res.json();
+      if (result.success) window.location.href = '/index.html';
     }
 
-    // 初始化讀取
-    loadSchedule();
+    // 初始化載入
+    loadClassrooms();
   </script>
 </body>
 </html>
