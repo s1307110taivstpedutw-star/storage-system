@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>教室課表設置與 CSV 匯入</title>
+  <title>課表與借還時間管理系統</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f6f9; }
     h1, h2 { color: #333; }
@@ -10,108 +10,216 @@
     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
     th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
     th { background-color: #007bff; color: white; }
-    input[type="text"], textarea { width: 90%; padding: 6px; margin: 4px 0; }
-    button { background-color: #28a745; color: white; border: none; padding: 8px 16px; cursor: pointer; border-radius: 4px; }
-    button:hover { background-color: #218838; }
-    .btn-secondary { background-color: #17a2b8; }
-    .btn-secondary:hover { background-color: #138496; }
+    input[type="text"], input[type="file"] { padding: 6px; margin: 4px; }
+    button { background-color: #28a745; color: white; border: none; padding: 8px 14px; cursor: pointer; border-radius: 4px; font-size: 14px; margin: 2px; }
+    button:hover { opacity: 0.9; }
+    .btn-danger { background-color: #dc3545; }
+    .btn-warning { background-color: #ffc107; color: #333; }
+    .btn-info { background-color: #17a2b8; }
+    .hint { color: #666; font-size: 13px; line-height: 1.5; }
+    .format-box { background: #e9ecef; padding: 10px; border-radius: 4px; font-family: monospace; }
+    .form-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
   </style>
 </head>
 <body>
 
-  <h1>教室課表設置與匯入系統</h1>
+  <h1>課表與借還時間管理</h1>
 
-  <!-- 1. CSV 匯入區塊 -->
+  <!-- 1. Excel / CSV 批次檔案上傳區塊 -->
   <div class="card">
-    <h2>1. 批次匯入 CSV 課表</h2>
-    <p>請貼入 CSV 內容（格式：<code>教室,星期(1-5),節次(1-8),科目,教師</code>）：</p>
-    <textarea id="csvInput" rows="5" placeholder="101,1,1,資訊概論,張老師&#10;101,1,2,資訊概論,張老師"></textarea><br>
-    <button class="btn-secondary" onclick="importCSV()">匯入 CSV 課表</button>
+    <h2>1. 批次匯入 Excel / CSV 檔</h2>
+    <p class="hint">支援上傳 <code>.xlsx</code>、<code>.xls</code> 或 <code>.csv</code> 檔案。</p>
+    
+    <div class="format-box">
+      <strong>Excel 欄位順序要求：</strong><br>
+      [A] 教室 (1-8) | [B] 星期 (1-7) | [C] 借時間 | [D] 還時間 | [E] 班級 | [F] 教師 (選填)
+    </div>
+
+    <br>
+    <input type="file" id="excelFile" accept=".xlsx, .xls, .csv">
+    <button onclick="uploadExcel()">開始匯入檔案</button>
   </div>
 
-  <!-- 2. 手動新增/修改單筆課表 -->
+  <!-- 2. 手動新增 / 編輯區塊 -->
   <div class="card">
-    <h2>2. 手動更新單筆課表</h2>
-    <label>教室：<input type="text" id="inputClassroom" placeholder="例如：101" style="width: 100px;"></label>
-    <label>星期：<input type="text" id="inputDay" placeholder="1-5" style="width: 50px;"></label>
-    <label>節次：<input type="text" id="inputPeriod" placeholder="1-8" style="width: 50px;"></label>
-    <label>科目：<input type="text" id="inputSubject" placeholder="例如：電子學" style="width: 120px;"></label>
-    <label>教師：<input type="text" id="inputTeacher" placeholder="例如：陳老師" style="width: 120px;"></label>
-    <button onclick="updateSingle()">更新課表</button>
+    <h2 id="formTitle">2. 手動新增 / 編輯單筆課表</h2>
+    <input type="hidden" id="editId">
+    <div class="form-row">
+      <input type="text" id="inputClassroom" placeholder="教室 (例如: 101)" style="width: 120px;">
+      <input type="text" id="inputDay" placeholder="星期 (例如: 1)" style="width: 100px;">
+      <input type="text" id="inputBorrow" placeholder="借時間 (例如: 08:00)" style="width: 120px;">
+      <input type="text" id="inputReturn" placeholder="還時間 (例如: 09:00)" style="width: 120px;">
+      <input type="text" id="inputClass" placeholder="班級 (例如: 資訊一甲)" style="width: 140px;">
+      <input type="text" id="inputTeacher" placeholder="教師 (選填)" style="width: 120px;">
+      <button onclick="saveRecord()">儲存紀錄</button>
+      <button class="btn-warning" onclick="resetForm()">清空輸入欄</button>
+    </div>
   </div>
 
   <!-- 3. 目前課表預覽 -->
   <div class="card">
-    <h2>3. 既有課表資料預覽</h2>
-    <button class="btn-secondary" onclick="loadSchedule()">重新整理課表列表</button>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h2>3. 已匯入課表清單</h2>
+      <div>
+        <button class="btn-info" onclick="loadSchedule()">重新整理</button>
+        <button class="btn-danger" onclick="clearAll()">清空全部課表</button>
+      </div>
+    </div>
+
     <table id="scheduleTable">
       <thead>
         <tr>
-          <th>教室-星期-節次</th>
-          <th>科目</th>
-          <th>授課教師</th>
+          <th>教室</th>
+          <th>星期</th>
+          <th>借時間</th>
+          <th>還時間</th>
+          <th>班級</th>
+          <th>教師</th>
+          <th>操作</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td colspan="3">尚無資料，請先匯入或查詢。</td></tr>
+        <tr><td colspan="7">尚無資料，請先匯入。</td></tr>
       </tbody>
     </table>
   </div>
 
   <script>
-    // 讀取所有課表
+    let currentData = {};
+
+    // 讀取所有課表資料
     async function loadSchedule() {
       const res = await fetch('/api/schedule');
       const result = await res.json();
       const tbody = document.querySelector('#scheduleTable tbody');
       tbody.innerHTML = '';
+      currentData = result.data || {};
 
-      if (result.success && Object.keys(result.data).length > 0) {
-        for (const [key, item] of Object.entries(result.data)) {
+      if (result.success && Object.keys(currentData).length > 0) {
+        for (const [id, item] of Object.entries(currentData)) {
           const row = `<tr>
-            <td>${key}</td>
-            <td>${item.subject || '-'}</td>
+            <td>教室 ${item.classroom}</td>
+            <td>星期 ${item.day}</td>
+            <td>${item.borrowTime}</td>
+            <td>${item.returnTime}</td>
+            <td>${item.className || '-'}</td>
             <td>${item.teacher || '-'}</td>
+            <td>
+              <button class="btn-warning" onclick="editRecord('${id}')">編輯</button>
+              <button class="btn-danger" onclick="deleteRecord('${id}')">刪除</button>
+            </td>
           </tr>`;
           tbody.innerHTML += row;
         }
       } else {
-        tbody.innerHTML = '<tr><td colspan="3">目前尚無課表資料</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7">目前尚無資料</td></tr>';
       }
     }
 
-    // 手動單筆更新
-    async function updateSingle() {
-      const classroom = document.getElementById('inputClassroom').value;
-      const day = document.getElementById('inputDay').value;
-      const period = document.getElementById('inputPeriod').value;
-      const subject = document.getElementById('inputSubject').value;
-      const teacher = document.getElementById('inputTeacher').value;
+    // 上傳 Excel 檔案
+    async function uploadExcel() {
+      const fileInput = document.getElementById('excelFile');
+      if (!fileInput.files[0]) {
+        alert('請先選擇 Excel 或 CSV 檔案！');
+        return;
+      }
 
-      const res = await fetch('/api/schedule/update', {
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+
+      try {
+        const res = await fetch('/api/schedule/upload-excel', {
+          method: 'POST',
+          body: formData
+        });
+        const result = await res.json();
+        alert(result.message);
+        if (result.success) {
+          fileInput.value = '';
+          loadSchedule();
+        }
+      } catch (err) {
+        alert('上傳失敗：' + err.message);
+      }
+    }
+
+    // 儲存單筆紀錄 (新增或編輯)
+    async function saveRecord() {
+      const id = document.getElementById('editId').value;
+      const classroom = document.getElementById('inputClassroom').value.trim();
+      const day = document.getElementById('inputDay').value.trim();
+      const borrowTime = document.getElementById('inputBorrow').value.trim();
+      const returnTime = document.getElementById('inputReturn').value.trim();
+      const className = document.getElementById('inputClass').value.trim();
+      const teacher = document.getElementById('inputTeacher').value.trim();
+
+      if (!classroom || !day || !borrowTime || !returnTime || !className) {
+        alert('請填寫完整資訊 (教室、星期、借/還時間、班級)！');
+        return;
+      }
+
+      const res = await fetch('/api/schedule/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ classroom, day, period, subject, teacher })
+        body: JSON.stringify({ id, classroom, day, borrowTime, returnTime, className, teacher })
       });
+      const result = await res.json();
+      alert(result.message);
+      if (result.success) {
+        resetForm();
+        loadSchedule();
+      }
+    }
+
+    // 填入資料進行編輯
+    function editRecord(id) {
+      const item = currentData[id];
+      if (!item) return;
+
+      document.getElementById('editId').value = id;
+      document.getElementById('inputClassroom').value = item.classroom;
+      document.getElementById('inputDay').value = item.day;
+      document.getElementById('inputBorrow').value = item.borrowTime;
+      document.getElementById('inputReturn').value = item.returnTime;
+      document.getElementById('inputClass').value = item.className;
+      document.getElementById('inputTeacher').value = item.teacher || '';
+
+      document.getElementById('formTitle').innerText = '2. 編輯單筆課表 (修改中)';
+    }
+
+    // 清空表單輸入框
+    function resetForm() {
+      document.getElementById('editId').value = '';
+      document.getElementById('inputClassroom').value = '';
+      document.getElementById('inputDay').value = '';
+      document.getElementById('inputBorrow').value = '';
+      document.getElementById('inputReturn').value = '';
+      document.getElementById('inputClass').value = '';
+      document.getElementById('inputTeacher').value = '';
+      document.getElementById('formTitle').innerText = '2. 手動新增 / 編輯單筆課表';
+    }
+
+    // 刪除單筆資料
+    async function deleteRecord(id) {
+      if (!confirm('確定要刪除這筆課表紀錄嗎？')) return;
+
+      const res = await fetch(`/api/schedule/${id}`, { method: 'DELETE' });
       const result = await res.json();
       alert(result.message);
       if (result.success) loadSchedule();
     }
 
-    // CSV 文字匯入
-    async function importCSV() {
-      const csvText = document.getElementById('csvInput').value;
-      const res = await fetch('/api/schedule/import-csv-text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ csvText })
-      });
+    // 清空全部資料
+    async function clearAll() {
+      if (!confirm('警告：確定要清空「所有」課表資料嗎？此操作無法復原！')) return;
+
+      const res = await fetch('/api/schedule-all', { method: 'DELETE' });
       const result = await res.json();
       alert(result.message);
       if (result.success) loadSchedule();
     }
 
-    // 頁面載入時自動讀取課表
+    // 初始化讀取
     loadSchedule();
   </script>
 </body>
