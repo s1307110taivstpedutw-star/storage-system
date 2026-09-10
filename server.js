@@ -97,3 +97,13 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+const https = require('https');
+
+// 每 10 分鐘 (600,000 毫秒) 自動發送一次 Ping 請求給自己
+setInterval(() => {
+  https.get('https://storage-system-kqwy.onrender.com/ping', (res) => {
+    console.log(`Self-ping status: ${res.statusCode}`);
+  }).on('error', (err) => {
+    console.error('Self-ping error:', err.message);
+  });
+}, 10 * 60 * 1000);
