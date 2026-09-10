@@ -13,7 +13,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(session({
-  secret: 'key_cabinet_secret_key',
+  secret: 'arm_key_secret_123',
   resave: false,
   saveUninitialized: true,
   cookie: { secure: false }
@@ -21,7 +21,22 @@ app.use(session({
 
 const DATA_FILE = path.join(__dirname, 'data.json');
 
-// 讀取永久儲存的資料（若無則建立預設鑰匙櫃）
+// 初始化工廠 8 個格位預設值
+function getDefaultSlots() {
+  const slots = {};
+  for (let i = 1; i <= 8; i++) {
+    slots[i] = {
+      slotId: i,
+      roomName: `第 ${i} 教室`,
+      keyName: `教室 ${i} 鑰匙`,
+      borrower: '',
+      borrowTime: ''
+    };
+  }
+  return slots;
+}
+
+// 讀取永久儲存檔 data.json
 function loadData() {
   try {
     if (fs.existsSync(DATA_FILE)) {
@@ -30,17 +45,10 @@ function loadData() {
   } catch (err) {
     console.error('讀取 data.json 失敗:', err.message);
   }
-  return {
-    "cabinet_main": {
-      id: "cabinet_main",
-      name: "主機械手臂鑰匙櫃",
-      rows: 5, // 預設 5 列
-      cols: 8, // 預設 8 行
-      slots: {} // 格位資料 { "1_1": { keyName: "101 教室鑰匙", borrower: "張老師", status: "borrowed" } }
-    }
-  };
+  return getDefaultSlots();
 }
 
+// 寫入檔案永久保存
 function saveData(data) {
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
@@ -49,11 +57,11 @@ function saveData(data) {
   }
 }
 
-let cabinetStore = loadData();
+let armSlotsStore = loadData();
 
 app.get('/ping', (req, res) => res.send('pong'));
 
-// 1. 帳號登入 / 登出
+// 1. 登入 / 登出
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ success: false, message: '請輸入帳號與密碼！' });
@@ -68,70 +76,36 @@ app.post('/api/logout', (req, res) => {
   });
 });
 
-// 2. 鑰匙櫃管理 API
-app.get('/api/cabinets', (req, res) => {
-  res.json({ success: true, data: cabinetStore });
+// 2. 取得機械手臂 8 個格位資料
+app.get('/api/arm/slots', (req, res) => {
+  res.json({ success: true, data: armSlotsStore });
 });
 
-// 新增或修改鑰匙櫃矩陣
-app.post('/api/cabinets/save', (req, res) => {
-  const { id, name, rows, cols } = req.body;
-  if (!name) return res.status(400).json({ success: false, message: '鑰匙櫃名稱為必填！' });
-
-  const cabinetId = id || ('cab_' + Date.now().toString(36));
-  const r = parseInt(rows) || 5;
-  const c = parseInt(cols) || 8;
-
-  if (!cabinetStore[cabinetId]) {
-    cabinetStore[cabinetId] = { id: cabinetId, name, rows: r, cols: c, slots: {} };
-  } else {
-    cabinetStore[cabinetId].name = name;
-    cabinetStore[cabinetId].rows = r;
-    cabinetStore[cabinetId].cols = c;
+// 3. 更新單一格位設定（教室名稱、鑰匙名稱、借用狀態）
+app.post('/api/arm/slot/:id', (req, res) => {
+  const slotId = req.params.id;
+  if (!armSlotsStore[slotId]) {
+    return res.status(404).json({ success: false, message: '無此格位编号（僅限 1-8）' });
   }
 
-  saveData(cabinetStore);
-  res.json({ success: true, message: '鑰匙櫃矩陣設定已儲存！', id: cabinetId });
-});
+  const { roomName, keyName, borrower } = req.body;
 
-// 刪除鑰匙櫃
-app.delete('/api/cabinets/:id', (req, res) => {
-  const { id } = req.params;
-  if (cabinetStore[id]) {
-    delete cabinetStore[id];
-    saveData(cabinetStore);
-    res.json({ success: true, message: '鑰匙櫃已刪除！' });
-  } else {
-    res.status(404).json({ success: false, message: '找不到該鑰匙櫃' });
-  }
-});
+  if (roomName !== undefined) armSlotsStore[slotId].roomName = roomName.trim();
+  if (keyName !== undefined) armSlotsStore[slotId].keyName = keyName.trim();
 
-// 3. 個別鑰匙格位設定 / 借還更新 API
-app.post('/api/cabinets/:id/slot', (req, res) => {
-  const { id } = req.params;
-  const { row, col, keyName, borrower } = req.body;
-  if (!cabinetStore[id]) return res.status(404).json({ success: false, message: '找不到該鑰匙櫃' });
-
-  const slotKey = `${row}_${col}`;
-  if (!keyName) {
-    delete cabinetStore[id].slots[slotKey]; // 清空該格（無掛設鑰匙）
-  } else {
-    cabinetStore[id].slots[slotKey] = {
-      row,
-      col,
-      keyName: keyName.trim(),
-      borrower: borrower ? borrower.trim() : ''
-    };
+  // 若登記借用人，紀錄當下時間；若清空則代表還鑰匙
+  if (borrower !== undefined) {
+    const trimmedBorrower = borrower.trim();
+    armSlotsStore[slotId].borrower = trimmedBorrower;
+    armSlotsStore[slotId].borrowTime = trimmedBorrower ? new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }) : '';
   }
 
-  saveData(cabinetStore);
-  res.json({ success: true, message: '鑰匙格位狀態已更新！' });
+  saveData(armSlotsStore);
+  res.json({ success: true, message: `格位 ${slotId} 資料已成功更新！` });
 });
 
-// 4. 批次匯入鑰匙設定 CSV / Excel
-app.post('/api/cabinets/:id/upload-csv', upload.single('file'), (req, res) => {
-  const { id } = req.params;
-  if (!cabinetStore[id]) return res.status(404).json({ success: false, message: '找不到該鑰匙櫃' });
+// 4. 上傳 CSV / Excel 批次設定 8 間教室鑰匙名稱
+app.post('/api/arm/upload-csv', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: '請選擇 CSV/Excel 檔案' });
 
   try {
@@ -141,37 +115,37 @@ app.post('/api/cabinets/:id/upload-csv', upload.single('file'), (req, res) => {
 
     let count = 0;
     rows.forEach((row) => {
-      if (!row || row.length < 3) return;
+      if (!row || row.length < 2) return;
 
-      const r = String(row[0]).trim();        // 列 (Row)
-      const c = String(row[1]).trim();        // 行 (Col)
-      const keyName = String(row[2]).trim();  // 鑰匙名稱 (如: 101教室鑰匙)
-      const borrower = row[3] ? String(row[3]).trim() : ''; // 借用人/狀態 (如: 張老師 或 留空代表在位)
+      const slotId = parseInt(row[0]);               // 1 ~ 8
+      const roomName = String(row[1]).trim();        // 教室名稱 (如: 101 PLC教室)
+      const keyName = row[2] ? String(row[2]).trim() : `教室 ${slotId} 鑰匙`; // 鑰匙名稱
+      const borrower = row[3] ? String(row[3]).trim() : '';                  // 借用人
 
-      if (r.includes('列') || c.includes('行')) return; // 跳過標題列
+      if (isNaN(slotId) || slotId < 1 || slotId > 8) return; // 跳過非 1-8 格位
 
-      const slotKey = `${r}_${c}`;
-      cabinetStore[id].slots[slotKey] = { row: r, col: c, keyName, borrower };
+      armSlotsStore[slotId] = {
+        slotId,
+        roomName,
+        keyName,
+        borrower,
+        borrowTime: borrower ? new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }) : ''
+      };
       count++;
     });
 
-    saveData(cabinetStore);
-    res.json({ success: true, message: `成功匯入 ${count} 個鑰匙格位資料！` });
+    saveData(armSlotsStore);
+    res.json({ success: true, message: `成功更新 ${count} 個格位的對應設定！` });
   } catch (err) {
     res.status(500).json({ success: false, message: '解析失敗：' + err.message });
   }
 });
 
-// 清空所有鑰匙格位
-app.delete('/api/cabinets/:id/clear-slots', (req, res) => {
-  const { id } = req.params;
-  if (cabinetStore[id]) {
-    cabinetStore[id].slots = {};
-    saveData(cabinetStore);
-    res.json({ success: true, message: '已清空該櫃所有鑰匙格位！' });
-  } else {
-    res.status(404).json({ success: false, message: '找不到該鑰匙櫃' });
-  }
+// 5. 重置所有格位為預設狀態
+app.post('/api/arm/reset-all', (req, res) => {
+  armSlotsStore = getDefaultSlots();
+  saveData(armSlotsStore);
+  res.json({ success: true, message: '已重置 8 個格位為預設狀態！' });
 });
 
 const PORT = process.env.PORT || 10000;
