@@ -2,234 +2,145 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>機械手臂鑰匙格位管理系統</title>
+  <title>工廠機械手臂鑰匙格位管理系統 (8 格)</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f6f9; }
+    body { font-family: 'Segoe UI', Microsoft JhengHei, sans-serif; margin: 20px; background-color: #f4f6f9; }
     .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
 
-    .tabs-container { display: flex; gap: 8px; border-bottom: 2px solid #ccc; margin-bottom: 20px; overflow-x: auto; }
-    .tab-btn { padding: 10px 20px; background: #e9ecef; border: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; color: #495057; }
-    .tab-btn.active { background: #007bff; color: white; }
-    .tab-add-btn { background: #28a745; color: white; border-radius: 6px; padding: 10px 15px; border: none; cursor: pointer; }
+    /* 8 個格位 4x2 網格排版 */
+    .arm-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 15px; }
+    @media (max-width: 900px) { .arm-grid { grid-template-columns: repeat(2, 1fr); } }
 
-    /* 格位矩陣 */
-    .grid-container { display: grid; gap: 10px; margin-top: 15px; }
-    .grid-box { border: 2px dashed #ccc; border-radius: 8px; padding: 10px; background: #fafafa; text-align: center; min-height: 85px; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; transition: 0.2s; }
-    .grid-box:hover { border-color: #007bff; transform: translateY(-2px); }
-    
-    /* 在位（可借用）: 綠色 */
-    .grid-box.available { border-style: solid; border-color: #28a745; background: #e8f5e9; }
-    /* 已借出: 紅色/橘色 */
-    .grid-box.borrowed { border-style: solid; border-color: #dc3545; background: #ffebee; }
+    .slot-box { border: 2px solid #dee2e6; border-radius: 10px; padding: 15px; background: #ffffff; text-align: center; position: relative; transition: 0.2s; min-height: 140px; display: flex; flex-direction: column; justify-content: space-between; }
+    .slot-box:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
+
+    .slot-number { position: absolute; top: 10px; left: 10px; background: #343a40; color: white; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; }
+
+    /* 在位狀態（綠）與借出狀態（紅） */
+    .slot-box.in-stock { border-color: #28a745; background-color: #f8fff9; }
+    .slot-box.borrowed { border-color: #dc3545; background-color: #fff8f8; }
+
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; color: white; margin-top: 6px; }
+    .badge-success { background-color: #28a745; }
+    .badge-danger { background-color: #dc3545; }
 
     .btn-danger { background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
     .btn-warning { background-color: #ffc107; color: #333; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
     .btn-primary { background-color: #007bff; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; }
-    input[type="text"], input[type="number"], input[type="file"] { padding: 6px; margin: 4px; }
+    input[type="file"] { padding: 6px; margin: 4px; }
     .format-box { background: #e9ecef; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 13px; }
-    .badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; color: white; }
-    .badge-in { background-color: #28a745; }
-    .badge-out { background-color: #dc3545; }
   </style>
 </head>
 <body>
 
   <div class="header-bar">
-    <h1>機械手臂鑰匙格位管理系統</h1>
+    <h1>工廠機械手臂鑰匙格位管理系統</h1>
     <button class="btn-danger" onclick="logout()" style="padding: 10px 18px;">登出系統</button>
   </div>
 
-  <!-- 鑰匙櫃頁籤 -->
-  <div class="tabs-container" id="tabsContainer"></div>
-
-  <!-- 鑰匙櫃尺寸設定 -->
+  <!-- CSV 批次匯入 -->
   <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-      <h2 id="currentCabinetTitle">鑰匙櫃設定</h2>
-      <button class="btn-danger" onclick="deleteCurrentCabinet()">刪除此鑰匙櫃</button>
-    </div>
-    <div style="margin-top: 10px;">
-      <label>鑰匙櫃名稱：</label>
-      <input type="text" id="editName" placeholder="例如: 主機械手臂鑰匙櫃">
-      <label>矩陣規格 (列 Row)：</label>
-      <input type="number" id="editRows" min="1" max="15" value="5" style="width: 60px;">
-      <label>× (行 Col)：</label>
-      <input type="number" id="editCols" min="1" max="15" value="8" style="width: 60px;">
-      <button class="btn-primary" onclick="saveCabinetConfig()">更新矩陣設定</button>
-    </div>
-  </div>
-
-  <!-- CSV 匯入鑰匙點位 -->
-  <div class="card">
-    <h3>批次匯入鑰匙格位設定 (CSV / Excel)</h3>
+    <h3>批次設定 8 間教室與鑰匙 (CSV / Excel 匯入)</h3>
     <div class="format-box">
       <strong>CSV 欄位格式範例：</strong><br>
-      列 (Row), 行 (Column), 鑰匙名稱/編號, 借用者 (無人借則留空)<br>
-      <em>範例：1, 1, 101 電腦教室鑰匙, 張老師</em><br>
-      <em>範例：1, 2, 202 創客教室鑰匙, </em>
+      格位號碼(1-8), 對應教室名稱, 鑰匙名稱, 借用人(選填)<br>
+      <em>範例：1, 101 CNC加工教室, 101教室鑰匙, </em><br>
+      <em>範例：2, 102 氣壓教室, 102教室鑰匙, 李老師</em>
     </div>
     <br>
     <input type="file" id="csvFileInput" accept=".csv, .xlsx, .xls">
-    <button class="btn-primary" onclick="uploadCsv()">上傳並匯入格位</button>
-    <button class="btn-warning" onclick="clearSlots()">清空所有格位</button>
+    <button class="btn-primary" onclick="uploadCsv()">上傳更新格位設定</button>
+    <button class="btn-warning" onclick="resetAllSlots()">重置為預設設定</button>
   </div>
 
-  <!-- 視覺化鑰匙格位矩陣視圖 -->
+  <!-- 機械手臂 8 格位狀態表 -->
   <div class="card">
-    <h3>機械手臂鑰匙牆矩陣視圖 (點擊格位可設定鑰匙或登記借還)</h3>
-    <div class="grid-container" id="matrixGrid"></div>
+    <h2>機械手臂 8 個格位即時狀態 (點擊格位可操作借還與命名)</h2>
+    <div class="arm-grid" id="armGrid"></div>
   </div>
 
   <script>
-    let cabinets = {};
-    let activeCabinetId = null;
+    let slotsData = {};
 
-    async function loadCabinets() {
-      const res = await fetch('/api/cabinets');
+    async function loadSlots() {
+      const res = await fetch('/api/arm/slots');
       const result = await res.json();
       if (result.success) {
-        cabinets = result.data;
-        const keys = Object.keys(cabinets);
-        if (keys.length > 0 && (!activeCabinetId || !cabinets[activeCabinetId])) {
-          activeCabinetId = keys[0];
-        }
-        renderTabs();
-        renderCurrentMatrix();
+        slotsData = result.data;
+        renderGrid();
       }
     }
 
-    function renderTabs() {
-      const container = document.getElementById('tabsContainer');
-      container.innerHTML = '';
-
-      for (const [id, cab] of Object.entries(cabinets)) {
-        const btn = document.createElement('button');
-        btn.className = `tab-btn ${id === activeCabinetId ? 'active' : ''}`;
-        btn.innerText = cab.name;
-        btn.onclick = () => {
-          activeCabinetId = id;
-          renderTabs();
-          renderCurrentMatrix();
-        };
-        container.appendChild(btn);
-      }
-
-      const addBtn = document.createElement('button');
-      addBtn.className = 'tab-add-btn';
-      addBtn.innerText = '+ 新增鑰匙櫃';
-      addBtn.onclick = addNewCabinet;
-      container.appendChild(addBtn);
-    }
-
-    function renderCurrentMatrix() {
-      const cab = cabinets[activeCabinetId];
-      if (!cab) return;
-
-      document.getElementById('currentCabinetTitle').innerText = `鑰匙櫃設定：${cab.name}`;
-      document.getElementById('editName').value = cab.name;
-      document.getElementById('editRows').value = cab.rows || 5;
-      document.getElementById('editCols').value = cab.cols || 8;
-
-      const grid = document.getElementById('matrixGrid');
-      const rows = parseInt(cab.rows) || 5;
-      const cols = parseInt(cab.cols) || 8;
-
-      grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    function renderGrid() {
+      const grid = document.getElementById('armGrid');
       grid.innerHTML = '';
 
-      for (let r = 1; r <= rows; r++) {
-        for (let c = 1; c <= cols; c++) {
-          const slotKey = `${r}_${c}`;
-          const slot = cab.slots ? cab.slots[slotKey] : null;
+      for (let i = 1; i <= 8; i++) {
+        const slot = slotsData[i] || { slotId: i, roomName: `第 ${i} 教室`, keyName: `鑰匙 ${i}`, borrower: '' };
+        const isBorrowed = slot.borrower && slot.borrower.trim() !== '';
 
-          const hasKey = slot && slot.keyName && slot.keyName.trim() !== '';
-          const isBorrowed = hasKey && slot.borrower && slot.borrower.trim() !== '';
+        const box = document.createElement('div');
+        box.className = `slot-box ${isBorrowed ? 'borrowed' : 'in-stock'}`;
+        box.onclick = () => operateSlot(i, slot);
 
-          let statusClass = '';
-          if (hasKey) {
-            statusClass = isBorrowed ? 'borrowed' : 'available';
-          }
-
-          const box = document.createElement('div');
-          box.className = `grid-box ${statusClass}`;
-          box.onclick = () => editSlot(r, c, slot);
-
-          box.innerHTML = `
-            <div style="font-size: 12px; color: #777;">格位 [${r}, ${c}]</div>
-            <div style="margin: 6px 0; font-size: 14px; font-weight: bold;">
-              ${hasKey ? slot.keyName : '<span style="color:#bbb;">(無鑰匙)</span>'}
-            </div>
-            <div>
-              ${hasKey ? (isBorrowed ? `<span class="badge badge-out">借出: ${slot.borrower}</span>` : '<span class="badge badge-in">在位 (可借)</span>') : ''}
-            </div>
-          `;
-          grid.appendChild(box);
-        }
+        box.innerHTML = `
+          <div class="slot-number">${i}</div>
+          <div style="font-weight: bold; font-size: 16px; color: #007bff; margin-top: 15px;">
+            ${slot.roomName}
+          </div>
+          <div style="font-size: 14px; font-weight: bold; margin: 8px 0; color: #333;">
+            ${slot.keyName}
+          </div>
+          <div>
+            ${isBorrowed ? `
+              <span class="badge badge-danger">已借出：${slot.borrower}</span>
+              <div style="font-size: 11px; color: #888; margin-top: 4px;">時間: ${slot.borrowTime || ''}</div>
+            ` : `
+              <span class="badge badge-success">鑰匙在位 (可借用)</span>
+            `}
+          </div>
+        `;
+        grid.appendChild(box);
       }
     }
 
-    async function editSlot(row, col, currentSlot) {
-      const currentKey = currentSlot ? currentSlot.keyName : '';
-      const currentBorrower = currentSlot ? currentSlot.borrower : '';
+    async function operateSlot(id, slot) {
+      const choice = prompt(
+        `【格位 ${id} - ${slot.roomName}】\n` +
+        `請選擇要執行的操作：\n` +
+        `1: 登記借用 / 歸還鑰匙\n` +
+        `2: 修改教室名稱或鑰匙名稱`,
+        '1'
+      );
 
-      const keyName = prompt(`修改格位 [${row}, ${col}] 設定的鑰匙名稱 (清空代表此格無鑰匙)：`, currentKey);
-      if (keyName === null) return;
+      if (choice === '1') {
+        const currentBorrower = slot.borrower || '';
+        const borrower = prompt(`登記借用人 (若要歸還鑰匙請將文字完全清空)：`, currentBorrower);
+        if (borrower === null) return;
 
-      let borrower = '';
-      if (keyName.trim() !== '') {
-        borrower = prompt(`登記借用人 (留空表示「鑰匙在位/可借用」)：`, currentBorrower) || '';
-      }
+        const res = await fetch(`/api/arm/slot/${id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ borrower })
+        });
+        const result = await res.json();
+        if (result.success) loadSlots();
 
-      const res = await fetch(`/api/cabinets/${activeCabinetId}/slot`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ row, col, keyName: keyName.trim(), borrower: borrower.trim() })
-      });
-      const result = await res.json();
-      if (result.success) loadCabinets();
-    }
+      } else if (choice === '2') {
+        const roomName = prompt(`修改格位 ${id} 的教室名稱：`, slot.roomName);
+        if (roomName === null) return;
 
-    async function addNewCabinet() {
-      const name = prompt('請輸入新鑰匙櫃名稱：', '備用鑰匙櫃');
-      if (!name) return;
+        const keyName = prompt(`修改格位 ${id} 的鑰匙名稱：`, slot.keyName);
+        if (keyName === null) return;
 
-      const res = await fetch('/api/cabinets/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, rows: 5, cols: 8 })
-      });
-      const result = await res.json();
-      if (result.success) {
-        activeCabinetId = result.id;
-        loadCabinets();
-      }
-    }
-
-    async function saveCabinetConfig() {
-      const name = document.getElementById('editName').value.trim();
-      const rows = document.getElementById('editRows').value;
-      const cols = document.getElementById('editCols').value;
-
-      const res = await fetch('/api/cabinets/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: activeCabinetId, name, rows, cols })
-      });
-      const result = await res.json();
-      alert(result.message);
-      if (result.success) loadCabinets();
-    }
-
-    async function deleteCurrentCabinet() {
-      if (!confirm(`確定要刪除「${cabinets[activeCabinetId].name}」嗎？`)) return;
-
-      const res = await fetch(`/api/cabinets/${activeCabinetId}`, { method: 'DELETE' });
-      const result = await res.json();
-      alert(result.message);
-      if (result.success) {
-        activeCabinetId = null;
-        loadCabinets();
+        const res = await fetch(`/api/arm/slot/${id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roomName, keyName })
+        });
+        const result = await res.json();
+        if (result.success) loadSlots();
       }
     }
 
@@ -243,7 +154,7 @@
       const formData = new FormData();
       formData.append('file', fileInput.files[0]);
 
-      const res = await fetch(`/api/cabinets/${activeCabinetId}/upload-csv`, {
+      const res = await fetch('/api/arm/upload-csv', {
         method: 'POST',
         body: formData
       });
@@ -251,16 +162,16 @@
       alert(result.message);
       if (result.success) {
         fileInput.value = '';
-        loadCabinets();
+        loadSlots();
       }
     }
 
-    async function clearSlots() {
-      if (!confirm('確定要清空此鑰匙櫃的所有鑰匙格位嗎？')) return;
-      const res = await fetch(`/api/cabinets/${activeCabinetId}/clear-slots`, { method: 'DELETE' });
+    async function resetAllSlots() {
+      if (!confirm('確定要將 8 個格位全部重置嗎？')) return;
+      const res = await fetch('/api/arm/reset-all', { method: 'POST' });
       const result = await res.json();
       alert(result.message);
-      if (result.success) loadCabinets();
+      if (result.success) loadSlots();
     }
 
     async function logout() {
@@ -270,7 +181,7 @@
       if (result.success) window.location.href = '/index.html';
     }
 
-    loadCabinets();
+    loadSlots();
   </script>
 </body>
 </html>
