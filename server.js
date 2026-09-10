@@ -1,79 +1,99 @@
 const express = require('express');
 const session = require('express-session');
-const path = require('path');
 const multer = require('multer');
-const upload = multer({ dest: 'uploads/' });
+const xlsx = require('xlsx');
+const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(session({
-  secret: 'taivs-storage-system-secret-key',
+  secret: 'storage_secret_key',
   resave: false,
   saveUninitialized: true,
   cookie: { secure: false }
 }));
 
-// 記憶體課表資料庫（格式：{ "101-1-1": { subject: "資訊概論", teacher: "張老師" } }）
-let scheduleData = {};
+// 記憶體資料庫（儲存課表紀錄）
+let scheduleDatabase = {};
 
-// ===== 既有 Auth API =====
-app.post('/api/login', (req, res) => {
-  const { username, password } = req.body;
-  if (username === 'taivsctrl' && password === 'taivsctrl116116116') {
-    req.session.user = { username };
-    return res.json({ success: true, message: '登入成功！' });
-  }
-  return res.status(401).json({ success: false, message: '帳號或密碼錯誤' });
-});
-
-// ===== 步驟二：新增 Schedule API =====
-
-// 1. 取得所有課表資料
+// 1. 取得所有課表
 app.get('/api/schedule', (req, res) => {
-  res.json({ success: true, data: scheduleData });
+  res.json({ success: true, data: scheduleDatabase });
 });
 
-// 2. 手動更新/新增單筆課表
-app.post('/api/schedule/update', (req, res) => {
-  const { classroom, day, period, subject, teacher } = req.body;
-  if (!classroom || !day || !period) {
-    return res.status(400).json({ success: false, message: '缺少必要欄位' });
-  }
-  const key = `${classroom}-${day}-${period}`;
-  scheduleData[key] = { subject, teacher };
-  res.json({ success: true, message: '課表更新成功！', data: scheduleData[key] });
-});
-
-// 3. 匯入 CSV 課表文字資料
-app.post('/api/schedule/import-csv-text', (req, res) => {
-  const { csvText } = req.body;
-  if (!csvText) {
-    return res.status(400).json({ success: false, message: '內容不能為空' });
-  }
-
-  const lines = csvText.trim().split('\n');
-  let count = 0;
-
-  lines.forEach((line, index) => {
-    // 跳過標題列
-    if (index === 0 && line.includes('classroom')) return;
-
-    const [classroom, day, period, subject, teacher] = line.split(',').map(s => s?.trim());
-    if (classroom && day && period) {
-      const key = `${classroom}-${day}-${period}`;
-      scheduleData[key] = { subject: subject || '', teacher: teacher || '' };
-      count++;
+// 2. 匯入 Excel/CSV 檔案
+app.post('/api/schedule/upload-excel', upload.single('file'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: '請選擇要上傳的檔案' });
     }
-  });
 
-  res.json({ success: true, message: `成功匯入 ${count} 筆課表資料！` });
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rows = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+
+    let count = 0;
+
+    rows.forEach((row) => {
+      if (!row || row.length < 5) return;
+
+      const classroom = String(row[0]).trim();
+      const day = String(row[1]).trim();
+      const borrowTime = String(row[2]).trim();
+      const returnTime = String(row[3]).trim();
+      const className = String(row[4]).trim();
+      const teacher = row[5] ? String(row[5]).trim() : '';
+
+      if (classroom.includes('教室') || day.includes('星期')) return;
+
+      const id = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+      scheduleDatabase[id] = { id, classroom, day, borrowTime, returnTime, className, teacher };
+      count++;
+    });
+
+    res.json({ success: true, message: `成功匯入 ${count} 筆資料！` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: '檔案解析失敗：' + err.message });
+  }
 });
 
+// 3. 新增 / 更新單筆資料
+app.post('/api/schedule/save', (req, res) => {
+  const { id, classroom, day, borrowTime, returnTime, className, teacher } = req.body;
+  if (!classroom || !day || !borrowTime || !returnTime || !className) {
+    return res.status(400).json({ success: false, message: '請填寫所有必填欄位！' });
+  }
+
+  const recordId = id || (Date.now().toString(36) + Math.random().toString(36).substr(2, 5));
+  scheduleDatabase[recordId] = { id: recordId, classroom, day, borrowTime, returnTime, className, teacher: teacher || '' };
+
+  res.json({ success: true, message: id ? '更新成功！' : '新增成功！' });
+});
+
+// 4. 刪除單筆資料
+app.delete('/api/schedule/:id', (req, res) => {
+  const { id } = req.params;
+  if (scheduleDatabase[id]) {
+    delete scheduleDatabase[id];
+    res.json({ success: true, message: '刪除成功！' });
+  } else {
+    res.status(404).json({ success: false, message: '找不到該筆資料' });
+  }
+});
+
+// 5. 清空所有資料
+app.delete('/api/schedule-all', (req, res) => {
+  scheduleDatabase = {};
+  res.json({ success: true, message: '已清空所有課表資料！' });
+});
+
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
