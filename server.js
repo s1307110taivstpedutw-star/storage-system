@@ -19,30 +19,28 @@ app.use(session({
   cookie: { secure: false }
 }));
 
-// 資料存檔路徑
 const DATA_FILE = path.join(__dirname, 'data.json');
 
-// 讀取永久儲存的資料（若無則給予預設值）
+// 載入持久化 JSON 資料
 function loadData() {
   try {
     if (fs.existsSync(DATA_FILE)) {
-      const fileData = fs.readFileSync(DATA_FILE, 'utf8');
-      return JSON.parse(fileData);
+      return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
     }
   } catch (err) {
     console.error('讀取 data.json 失敗:', err.message);
   }
   return {
-    "default_101": {
-      id: "default_101",
-      name: "101 教室",
-      slots: 8,
-      schedule: {}
+    "room_101": {
+      id: "room_101",
+      name: "101 機械教室",
+      rows: 4, // 4 列
+      cols: 6, // 6 行
+      slots: {} // 格位資料 { "1_1": { itemName: "螺絲起子組", borrower: "張老師" } }
     }
   };
 }
 
-// 將資料寫入檔案永久保存
 function saveData(data) {
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
@@ -51,12 +49,11 @@ function saveData(data) {
   }
 }
 
-// 初始化資料庫
 let classroomStore = loadData();
 
 app.get('/ping', (req, res) => res.send('pong'));
 
-// 1. 帳號驗證 API
+// 1. 登入 / 登出
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ success: false, message: '請輸入帳號與密碼！' });
@@ -71,27 +68,30 @@ app.post('/api/logout', (req, res) => {
   });
 });
 
-// 2. 教室管理 API
-// 取得所有教室列表與設定
+// 2. 教室 / 倉儲區管理
 app.get('/api/classrooms', (req, res) => {
   res.json({ success: true, data: classroomStore });
 });
 
-// 新增 / 更新教室 (設定名稱與格位數)
+// 新增或更新教室與格位矩陣 (列 x 行)
 app.post('/api/classrooms/save', (req, res) => {
-  const { id, name, slots } = req.body;
+  const { id, name, rows, cols } = req.body;
   if (!name) return res.status(400).json({ success: false, message: '教室名稱為必填！' });
 
-  const classId = id || ('c_' + Date.now().toString(36));
+  const classId = id || ('room_' + Date.now().toString(36));
+  const r = parseInt(rows) || 4;
+  const c = parseInt(cols) || 6;
+
   if (!classroomStore[classId]) {
-    classroomStore[classId] = { id: classId, name, slots: parseInt(slots) || 8, schedule: {} };
+    classroomStore[classId] = { id: classId, name, rows: r, cols: c, slots: {} };
   } else {
     classroomStore[classId].name = name;
-    classroomStore[classId].slots = parseInt(slots) || 8;
+    classroomStore[classId].rows = r;
+    classroomStore[classId].cols = c;
   }
 
-  saveData(classroomStore); // 存入檔案
-  res.json({ success: true, message: '教室設定已儲存！', id: classId });
+  saveData(classroomStore);
+  res.json({ success: true, message: '教室與格位矩陣設定已儲存！', id: classId });
 });
 
 // 刪除教室
@@ -99,14 +99,31 @@ app.delete('/api/classrooms/:id', (req, res) => {
   const { id } = req.params;
   if (classroomStore[id]) {
     delete classroomStore[id];
-    saveData(classroomStore); // 存入檔案
+    saveData(classroomStore);
     res.json({ success: true, message: '教室已刪除！' });
   } else {
     res.status(404).json({ success: false, message: '找不到該教室' });
   }
 });
 
-// 3. 該教室專屬課表與 CSV 匯入 API
+// 3. 單格格位更新 API
+app.post('/api/classrooms/:id/slot', (req, res) => {
+  const { id } = req.params;
+  const { row, col, itemName, borrower } = req.body;
+  if (!classroomStore[id]) return res.status(404).json({ success: false, message: '找不到該教室' });
+
+  const slotKey = `${row}_${col}`;
+  if (!itemName && !borrower) {
+    delete classroomStore[id].slots[slotKey]; // 清空該格
+  } else {
+    classroomStore[id].slots[slotKey] = { row, col, itemName: itemName || '', borrower: borrower || '' };
+  }
+
+  saveData(classroomStore);
+  res.json({ success: true, message: '格位資料已更新！' });
+});
+
+// 4. 機械手臂格位 CSV / Excel 批次匯入
 app.post('/api/classrooms/:id/upload-csv', upload.single('file'), (req, res) => {
   const { id } = req.params;
   if (!classroomStore[id]) return res.status(404).json({ success: false, message: '找不到該教室' });
@@ -120,33 +137,33 @@ app.post('/api/classrooms/:id/upload-csv', upload.single('file'), (req, res) => 
     let count = 0;
     rows.forEach((row) => {
       if (!row || row.length < 3) return;
-      
-      const day = String(row[0]).trim();        // 星期 (1-7)
-      const slot = String(row[1]).trim();       // 節次/格位 (1-8)
-      const className = String(row[2]).trim();  // 班級/課程
-      const teacher = row[3] ? String(row[3]).trim() : ''; // 教師
 
-      if (day.includes('星期') || slot.includes('節')) return;
+      const r = String(row[0]).trim();         // 列 (Row)
+      const c = String(row[1]).trim();         // 行 (Col)
+      const itemName = String(row[2]).trim();  // 存放物品/器材
+      const borrower = row[3] ? String(row[3]).trim() : ''; // 借用人/班級
 
-      const itemKey = `${day}_${slot}`;
-      classroomStore[id].schedule[itemKey] = { day, slot, className, teacher };
+      if (r.includes('列') || c.includes('行')) return; // 忽略標題列
+
+      const slotKey = `${r}_${c}`;
+      classroomStore[id].slots[slotKey] = { row: r, col: c, itemName, borrower };
       count++;
     });
 
-    saveData(classroomStore); // 存入檔案
-    res.json({ success: true, message: `成功匯入 ${count} 筆課表資料至「${classroomStore[id].name}」！` });
+    saveData(classroomStore);
+    res.json({ success: true, message: `成功匯入 ${count} 個格位資料至「${classroomStore[id].name}」！` });
   } catch (err) {
     res.status(500).json({ success: false, message: '解析失敗：' + err.message });
   }
 });
 
-// 清空指定教室課表
-app.delete('/api/classrooms/:id/clear-schedule', (req, res) => {
+// 清空教室所有格位
+app.delete('/api/classrooms/:id/clear-slots', (req, res) => {
   const { id } = req.params;
   if (classroomStore[id]) {
-    classroomStore[id].schedule = {};
-    saveData(classroomStore); // 存入檔案
-    res.json({ success: true, message: '已清空該教室所有課表資料！' });
+    classroomStore[id].slots = {};
+    saveData(classroomStore);
+    res.json({ success: true, message: '已清空該教室所有機械手臂格位資料！' });
   } else {
     res.status(404).json({ success: false, message: '找不到該教室' });
   }
