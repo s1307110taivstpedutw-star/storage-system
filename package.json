@@ -1,13 +1,14 @@
 {
   "name": "storage-system",
   "version": "1.0.0",
-  "description": "鑰匙與冷氣卡機械手臂倉儲管理系統",
+  "description": "Storage System with Schedule Management",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "express-session": "^1.17.3"
+    "express-session": "^1.17.3",
+    "multer": "^1.4.5-lts.1"
   }
 }
