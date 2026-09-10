@@ -18,115 +18,111 @@ app.use(session({
   cookie: { secure: false }
 }));
 
-// 記憶體資料庫（儲存課表紀錄）
-let scheduleDatabase = {};
+// 記憶體資料庫：以教室為單位儲存
+let classroomStore = {
+  "default_101": {
+    id: "default_101",
+    name: "101 教室",
+    slots: 8, // 預設 8 節課/格位
+    schedule: {}
+  }
+};
 
-// 健康檢查端點 (讓外部 UptimeRobot 或手動 Ping 使用)
-app.get('/ping', (req, res) => {
-  res.send('pong');
-});
+app.get('/ping', (req, res) => res.send('pong'));
 
-// ==================== 1. 帳號登入與登出 API ====================
-
-// 登入 API
+// 1. 帳號驗證 API
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
-  
-  if (!username || !password) {
-    return res.status(400).json({ success: false, message: '請輸入帳號與密碼！' });
-  }
-
-  // 記錄 Session 並登入成功
+  if (!username || !password) return res.status(400).json({ success: false, message: '請輸入帳號與密碼！' });
   req.session.user = { username };
   res.json({ success: true, message: '登入成功！' });
 });
 
-// 登出 API
 app.post('/api/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ success: false, message: '登出失敗' });
-    }
+  req.session.destroy(() => {
     res.clearCookie('connect.sid');
     res.json({ success: true, message: '已成功登出' });
   });
 });
 
-// ==================== 2. 課表管理 API ====================
-
-// 取得所有課表
-app.get('/api/schedule', (req, res) => {
-  res.json({ success: true, data: scheduleDatabase });
+// 2. 教室管理 API
+// 取得所有教室列表與設定
+app.get('/api/classrooms', (req, res) => {
+  res.json({ success: true, data: classroomStore });
 });
 
-// 匯入 Excel/CSV 檔案
-app.post('/api/schedule/upload-excel', upload.single('file'), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: '請選擇要上傳的檔案' });
-    }
+// 新增 / 更新教室 (設定名稱與格位數)
+app.post('/api/classrooms/save', (req, res) => {
+  const { id, name, slots } = req.body;
+  if (!name) return res.status(400).json({ success: false, message: '教室名稱為必填！' });
 
+  const classId = id || ('c_' + Date.now().toString(36));
+  if (!classroomStore[classId]) {
+    classroomStore[classId] = { id: classId, name, slots: parseInt(slots) || 8, schedule: {} };
+  } else {
+    classroomStore[classId].name = name;
+    classroomStore[classId].slots = parseInt(slots) || 8;
+  }
+
+  res.json({ success: true, message: '教室設定已儲存！', id: classId });
+});
+
+// 刪除教室
+app.delete('/api/classrooms/:id', (req, res) => {
+  const { id } = req.params;
+  if (classroomStore[id]) {
+    delete classroomStore[id];
+    res.json({ success: true, message: '教室已刪除！' });
+  } else {
+    res.status(404).json({ success: false, message: '找不到該教室' });
+  }
+});
+
+// 3. 該教室專屬課表與 CSV 匯入 API
+// 匯入指定教室的 CSV/Excel
+app.post('/api/classrooms/:id/upload-csv', upload.single('file'), (req, res) => {
+  const { id } = req.params;
+  if (!classroomStore[id]) return res.status(404).json({ success: false, message: '找不到該教室' });
+  if (!req.file) return res.status(400).json({ success: false, message: '請選擇 CSV/Excel 檔案' });
+
+  try {
     const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rows = xlsx.utils.sheet_to_json(sheet, { header: 1 });
 
     let count = 0;
-
+    // 重置該教室課表或追加
     rows.forEach((row) => {
-      if (!row || row.length < 5) return;
+      if (!row || row.length < 4) return;
+      
+      const day = String(row[0]).trim();        // 星期 (例如: 1)
+      const slot = String(row[1]).trim();       // 節次/格位 (例如: 1)
+      const className = String(row[2]).trim();  // 班級/課程
+      const teacher = row[3] ? String(row[3]).trim() : ''; // 教師
 
-      const classroom = String(row[0]).trim();
-      const day = String(row[1]).trim();
-      const borrowTime = String(row[2]).trim();
-      const returnTime = String(row[3]).trim();
-      const className = String(row[4]).trim();
-      const teacher = row[5] ? String(row[5]).trim() : '';
+      if (day.includes('星期') || slot.includes('節')) return; // 跳過標題
 
-      if (classroom.includes('教室') || day.includes('星期')) return;
-
-      const id = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-      scheduleDatabase[id] = { id, classroom, day, borrowTime, returnTime, className, teacher };
+      const itemKey = `${day}_${slot}`;
+      classroomStore[id].schedule[itemKey] = { day, slot, className, teacher };
       count++;
     });
 
-    res.json({ success: true, message: `成功匯入 ${count} 筆資料！` });
+    res.json({ success: true, message: `成功匯入 ${count} 筆課表資料至「${classroomStore[id].name}」！` });
   } catch (err) {
-    res.status(500).json({ success: false, message: '檔案解析失敗：' + err.message });
+    res.status(500).json({ success: false, message: '解析失敗：' + err.message });
   }
 });
 
-// 新增 / 更新單筆資料
-app.post('/api/schedule/save', (req, res) => {
-  const { id, classroom, day, borrowTime, returnTime, className, teacher } = req.body;
-  if (!classroom || !day || !borrowTime || !returnTime || !className) {
-    return res.status(400).json({ success: false, message: '請填寫所有必填欄位！' });
-  }
-
-  const recordId = id || (Date.now().toString(36) + Math.random().toString(36).substr(2, 5));
-  scheduleDatabase[recordId] = { id: recordId, classroom, day, borrowTime, returnTime, className, teacher: teacher || '' };
-
-  res.json({ success: true, message: id ? '更新成功！' : '新增成功！' });
-});
-
-// 刪除單筆資料
-app.delete('/api/schedule/:id', (req, res) => {
+// 清空指定教室課表
+app.delete('/api/classrooms/:id/clear-schedule', (req, res) => {
   const { id } = req.params;
-  if (scheduleDatabase[id]) {
-    delete scheduleDatabase[id];
-    res.json({ success: true, message: '刪除成功！' });
+  if (classroomStore[id]) {
+    classroomStore[id].schedule = {};
+    res.json({ success: true, message: '已清空該教室所有課表資料！' });
   } else {
-    res.status(404).json({ success: false, message: '找不到該筆資料' });
+    res.status(404).json({ success: false, message: '找不到該教室' });
   }
-});
-
-// 清空所有資料
-app.delete('/api/schedule-all', (req, res) => {
-  scheduleDatabase = {};
-  res.json({ success: true, message: '已清空所有課表資料！' });
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
