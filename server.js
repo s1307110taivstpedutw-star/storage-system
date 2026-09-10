@@ -3,7 +3,6 @@ const session = require('express-session');
 const multer = require('multer');
 const xlsx = require('xlsx');
 const path = require('path');
-const https = require('https');
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -22,19 +21,10 @@ app.use(session({
 // 記憶體資料庫（儲存課表紀錄）
 let scheduleDatabase = {};
 
-// 健康檢查 / 保活端點 (Self-Ping)
+// 健康檢查端點（讓外部 UptimeRobot 或手動測試使用）
 app.get('/ping', (req, res) => {
   res.send('pong');
 });
-
-// 每 10 分鐘自動對自己發送 Ping 請求，避免 Render 休眠
-setInterval(() => {
-  https.get('https://storage-system-kqwy.onrender.com/ping', (res) => {
-    console.log(`Self-ping status: ${res.statusCode}`);
-  }).on('error', (err) => {
-    console.error('Self-ping error:', err.message);
-  });
-}, 10 * 60 * 1000);
 
 // 1. 取得所有課表
 app.get('/api/schedule', (req, res) => {
