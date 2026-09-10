@@ -1,257 +1,173 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-  <meta charset="UTF-8">
-  <title>多教室獨立課表與格位管理系統</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f6f9; }
-    .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    
-    /* 教室頁籤 Style */
-    .tabs-container { display: flex; gap: 8px; border-bottom: 2px solid #ccc; padding-bottom: 0; margin-bottom: 20px; overflow-x: auto; }
-    .tab-btn { padding: 10px 20px; background: #e9ecef; border: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; color: #495057; }
-    .tab-btn.active { background: #007bff; color: white; }
-    .tab-add-btn { background: #28a745; color: white; border-radius: 6px; padding: 10px 15px; border: none; cursor: pointer; }
+const express = require('express');
+const session = require('express-session');
+const multer = require('multer');
+const xlsx = require('xlsx');
+const path = require('path');
+const fs = require('fs');
 
-    /* 課表方格與表格 */
-    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-    th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
-    th { background-color: #007bff; color: white; }
-    
-    .btn-danger { background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
-    .btn-warning { background-color: #ffc107; color: #333; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
-    .btn-primary { background-color: #007bff; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; }
-    input[type="text"], input[type="number"], input[type="file"] { padding: 6px; margin: 4px; }
-    .hint { color: #666; font-size: 13px; }
-    .format-box { background: #e9ecef; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 13px; }
-  </style>
-</head>
-<body>
+const app = express();
+const upload = multer({ storage: multer.memoryStorage() });
 
-  <div class="header-bar">
-    <h1>多教室課表管理系統</h1>
-    <button class="btn-danger" onclick="logout()" style="padding: 10px 18px;">登出系統</button>
-  </div>
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
 
-  <!-- 1. 教室頁籤分頁區 -->
-  <div class="tabs-container" id="tabsContainer">
-    <!-- 動態生成教室分頁按鈕 -->
-  </div>
+app.use(session({
+  secret: 'storage_secret_key',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false }
+}));
 
-  <!-- 2. 當前教室設定與管理 -->
-  <div class="card" id="classroomConfigCard">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-      <h2 id="currentClassroomTitle">教室設定</h2>
-      <button class="btn-danger" onclick="deleteCurrentClassroom()">刪除此教室</button>
-    </div>
-    <div style="margin-top: 10px;">
-      <label>教室名稱：</label>
-      <input type="text" id="editName" placeholder="例如: 101 教室">
-      <label>每日節次/格位數：</label>
-      <input type="number" id="editSlots" min="1" max="15" value="8" style="width: 70px;">
-      <button class="btn-primary" onclick="saveClassroomConfig()">更新設定</button>
-    </div>
-  </div>
+const DATA_FILE = path.join(__dirname, 'data.json');
 
-  <!-- 3. 匯入專屬 CSV 區塊 -->
-  <div class="card">
-    <h3>匯入此教室的 CSV / Excel 課表</h3>
-    <div class="format-box">
-      <strong>CSV 欄位格式範例：</strong><br>
-      星期 (1-7), 節次 (1-8), 班級名稱, 教師名稱<br>
-      <em>範例：1, 2, 資訊一甲, 張老師</em>
-    </div>
-    <br>
-    <input type="file" id="csvFileInput" accept=".csv, .xlsx, .xls">
-    <button class="btn-primary" onclick="uploadCsv()">上傳並帶入課表</button>
-    <button class="btn-warning" onclick="clearSchedule()">清空此教室課表</button>
-  </div>
-
-  <!-- 4. 格位課表預覽 -->
-  <div class="card">
-    <h3>課表格位預覽</h3>
-    <table id="gridTable">
-      <thead>
-        <tr>
-          <th>節次 / 格位</th>
-          <th>星期一</th>
-          <th>星期二</th>
-          <th>星期三</th>
-          <th>星期四</th>
-          <th>星期五</th>
-        </tr>
-      </thead>
-      <tbody id="gridBody">
-        <!-- 動態繪製課表格位 -->
-      </tbody>
-    </table>
-  </div>
-
-  <script>
-    let classrooms = {};
-    let activeClassroomIndex = null;
-
-    // 讀取所有教室資料
-    async function loadClassrooms() {
-      const res = await fetch('/api/classrooms');
-      const result = await res.json();
-      if (result.success) {
-        classrooms = result.data;
-        const keys = Object.keys(classrooms);
-        if (keys.length > 0 && !activeClassroomIndex) {
-          activeClassroomIndex = keys[0];
-        }
-        renderTabs();
-        renderCurrentClassroom();
-      }
+// 載入持久化 JSON 資料
+function loadData() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
     }
-
-    // 渲染分頁 Tab
-    function renderTabs() {
-      const container = document.getElementById('tabsContainer');
-      container.innerHTML = '';
-
-      for (const [id, room] of Object.entries(classrooms)) {
-        const btn = document.createElement('button');
-        btn.className = `tab-btn ${id === activeClassroomIndex ? 'active' : ''}`;
-        btn.innerText = room.name;
-        btn.onclick = () => {
-          activeClassroomIndex = id;
-          renderTabs();
-          renderCurrentClassroom();
-        };
-        container.appendChild(btn);
-      }
-
-      // 新增教室按鈕
-      const addBtn = document.createElement('button');
-      addBtn.className = 'tab-add-btn';
-      addBtn.innerText = '+ 新增教室';
-      addBtn.onclick = addNewClassroom;
-      container.appendChild(addBtn);
+  } catch (err) {
+    console.error('讀取 data.json 失敗:', err.message);
+  }
+  return {
+    "room_101": {
+      id: "room_101",
+      name: "101 機械教室",
+      rows: 4, // 4 列
+      cols: 6, // 6 行
+      slots: {} // 格位資料 { "1_1": { itemName: "螺絲起子組", borrower: "張老師" } }
     }
+  };
+}
 
-    // 渲染目前選中的教室內容與格位
-    function renderCurrentClassroom() {
-      const room = classrooms[activeClassroomIndex];
-      if (!room) return;
+function saveData(data) {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+  } catch (err) {
+    console.error('寫入 data.json 失敗:', err.message);
+  }
+}
 
-      document.getElementById('currentClassroomTitle').innerText = `教室設定：${room.name}`;
-      document.getElementById('editName').value = room.name;
-      document.getElementById('editSlots').value = room.slots || 8;
+let classroomStore = loadData();
 
-      // 繪製格位表 (Grid)
-      const tbody = document.getElementById('gridBody');
-      tbody.innerHTML = '';
+app.get('/ping', (req, res) => res.send('pong'));
 
-      const slotsCount = parseInt(room.slots) || 8;
-      for (let slot = 1; slot <= slotsCount; slot++) {
-        let tr = `<tr><td><strong>第 ${slot} 節</strong></td>`;
-        for (let day = 1; day <= 5; day++) {
-          const key = `${day}_${slot}`;
-          const item = room.schedule ? room.schedule[key] : null;
-          if (item) {
-            tr += `<td style="background-color: #e3f2fd;">
-              <strong>${item.className}</strong><br>
-              <small style="color:#666;">${item.teacher || ''}</small>
-            </td>`;
-          } else {
-            tr += `<td style="color:#ccc;">-</td>`;
-          }
-        }
-        tr += `</tr>`;
-        tbody.innerHTML += tr;
-      }
-    }
+// 1. 登入 / 登出
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ success: false, message: '請輸入帳號與密碼！' });
+  req.session.user = { username };
+  res.json({ success: true, message: '登入成功！' });
+});
 
-    // 新增教室
-    async function addNewClassroom() {
-      const name = prompt('請輸入新教室名稱：', '新教室');
-      if (!name) return;
+app.post('/api/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.clearCookie('connect.sid');
+    res.json({ success: true, message: '已成功登出' });
+  });
+});
 
-      const res = await fetch('/api/classrooms/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, slots: 8 })
-      });
-      const result = await res.json();
-      if (result.success) {
-        activeClassroomIndex = result.id;
-        loadClassrooms();
-      }
-    }
+// 2. 教室 / 倉儲區管理
+app.get('/api/classrooms', (req, res) => {
+  res.json({ success: true, data: classroomStore });
+});
 
-    // 儲存教室設定 (改名、變更格位數)
-    async function saveClassroomConfig() {
-      const name = document.getElementById('editName').value.trim();
-      const slots = document.getElementById('editSlots').value;
+// 新增或更新教室與格位矩陣 (列 x 行)
+app.post('/api/classrooms/save', (req, res) => {
+  const { id, name, rows, cols } = req.body;
+  if (!name) return res.status(400).json({ success: false, message: '教室名稱為必填！' });
 
-      const res = await fetch('/api/classrooms/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: activeClassroomIndex, name, slots })
-      });
-      const result = await res.json();
-      alert(result.message);
-      if (result.success) loadClassrooms();
-    }
+  const classId = id || ('room_' + Date.now().toString(36));
+  const r = parseInt(rows) || 4;
+  const c = parseInt(cols) || 6;
 
-    // 刪除目前教室
-    async function deleteCurrentClassroom() {
-      if (!confirm(`確定要刪除「${classrooms[activeClassroomIndex].name}」嗎？此動作無法復原！`)) return;
+  if (!classroomStore[classId]) {
+    classroomStore[classId] = { id: classId, name, rows: r, cols: c, slots: {} };
+  } else {
+    classroomStore[classId].name = name;
+    classroomStore[classId].rows = r;
+    classroomStore[classId].cols = c;
+  }
 
-      const res = await fetch(`/api/classrooms/${activeClassroomIndex}`, { method: 'DELETE' });
-      const result = await res.json();
-      alert(result.message);
-      if (result.success) {
-        activeClassroomIndex = null;
-        loadClassrooms();
-      }
-    }
+  saveData(classroomStore);
+  res.json({ success: true, message: '教室與格位矩陣設定已儲存！', id: classId });
+});
 
-    // 獨立上傳該教室的 CSV/Excel
-    async function uploadCsv() {
-      const fileInput = document.getElementById('csvFileInput');
-      if (!fileInput.files[0]) {
-        alert('請先選擇 CSV 或 Excel 檔案！');
-        return;
-      }
+// 刪除教室
+app.delete('/api/classrooms/:id', (req, res) => {
+  const { id } = req.params;
+  if (classroomStore[id]) {
+    delete classroomStore[id];
+    saveData(classroomStore);
+    res.json({ success: true, message: '教室已刪除！' });
+  } else {
+    res.status(404).json({ success: false, message: '找不到該教室' });
+  }
+});
 
-      const formData = new FormData();
-      formData.append('file', fileInput.files[0]);
+// 3. 單格格位更新 API
+app.post('/api/classrooms/:id/slot', (req, res) => {
+  const { id } = req.params;
+  const { row, col, itemName, borrower } = req.body;
+  if (!classroomStore[id]) return res.status(404).json({ success: false, message: '找不到該教室' });
 
-      const res = await fetch(`/api/classrooms/${activeClassroomIndex}/upload-csv`, {
-        method: 'POST',
-        body: formData
-      });
-      const result = await res.json();
-      alert(result.message);
-      if (result.success) {
-        fileInput.value = '';
-        loadClassrooms();
-      }
-    }
+  const slotKey = `${row}_${col}`;
+  if (!itemName && !borrower) {
+    delete classroomStore[id].slots[slotKey]; // 清空該格
+  } else {
+    classroomStore[id].slots[slotKey] = { row, col, itemName: itemName || '', borrower: borrower || '' };
+  }
 
-    // 清空課表
-    async function clearSchedule() {
-      if (!confirm('確定要清空這間教室的課表嗎？')) return;
-      const res = await fetch(`/api/classrooms/${activeClassroomIndex}/clear-schedule`, { method: 'DELETE' });
-      const result = await res.json();
-      alert(result.message);
-      if (result.success) loadClassrooms();
-    }
+  saveData(classroomStore);
+  res.json({ success: true, message: '格位資料已更新！' });
+});
 
-    // 登出
-    async function logout() {
-      if (!confirm('確定要登出嗎？')) return;
-      const res = await fetch('/api/logout', { method: 'POST' });
-      const result = await res.json();
-      if (result.success) window.location.href = '/index.html';
-    }
+// 4. 機械手臂格位 CSV / Excel 批次匯入
+app.post('/api/classrooms/:id/upload-csv', upload.single('file'), (req, res) => {
+  const { id } = req.params;
+  if (!classroomStore[id]) return res.status(404).json({ success: false, message: '找不到該教室' });
+  if (!req.file) return res.status(400).json({ success: false, message: '請選擇 CSV/Excel 檔案' });
 
-    // 初始化載入
-    loadClassrooms();
-  </script>
-</body>
-</html>
+  try {
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+
+    let count = 0;
+    rows.forEach((row) => {
+      if (!row || row.length < 3) return;
+
+      const r = String(row[0]).trim();         // 列 (Row)
+      const c = String(row[1]).trim();         // 行 (Col)
+      const itemName = String(row[2]).trim();  // 存放物品/器材
+      const borrower = row[3] ? String(row[3]).trim() : ''; // 借用人/班級
+
+      if (r.includes('列') || c.includes('行')) return; // 忽略標題列
+
+      const slotKey = `${r}_${c}`;
+      classroomStore[id].slots[slotKey] = { row: r, col: c, itemName, borrower };
+      count++;
+    });
+
+    saveData(classroomStore);
+    res.json({ success: true, message: `成功匯入 ${count} 個格位資料至「${classroomStore[id].name}」！` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: '解析失敗：' + err.message });
+  }
+});
+
+// 清空教室所有格位
+app.delete('/api/classrooms/:id/clear-slots', (req, res) => {
+  const { id } = req.params;
+  if (classroomStore[id]) {
+    classroomStore[id].slots = {};
+    saveData(classroomStore);
+    res.json({ success: true, message: '已清空該教室所有機械手臂格位資料！' });
+  } else {
+    res.status(404).json({ success: false, message: '找不到該教室' });
+  }
+});
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
