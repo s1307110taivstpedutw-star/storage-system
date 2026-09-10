@@ -1,173 +1,261 @@
-const express = require('express');
-const session = require('express-session');
-const multer = require('multer');
-const xlsx = require('xlsx');
-const path = require('path');
-const fs = require('fs');
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>機械手臂倉儲與格位管理系統</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f6f9; }
+    .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    
+    /* 教室頁籤 */
+    .tabs-container { display: flex; gap: 8px; border-bottom: 2px solid #ccc; margin-bottom: 20px; overflow-x: auto; }
+    .tab-btn { padding: 10px 20px; background: #e9ecef; border: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; color: #495057; }
+    .tab-btn.active { background: #007bff; color: white; }
+    .tab-add-btn { background: #28a745; color: white; border-radius: 6px; padding: 10px 15px; border: none; cursor: pointer; }
 
-const app = express();
-const upload = multer({ storage: multer.memoryStorage() });
+    /* 機械手臂視覺化格位矩陣 */
+    .grid-container { display: grid; gap: 12px; margin-top: 15px; }
+    .grid-box { border: 2px dashed #bbb; border-radius: 8px; padding: 12px; background: #fafafa; text-align: center; min-height: 80px; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; transition: 0.2s; }
+    .grid-box:hover { border-color: #007bff; background: #f0f8ff; }
+    .grid-box.occupied { border-style: solid; border-color: #28a745; background: #e8f5e9; }
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+    .btn-danger { background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+    .btn-warning { background-color: #ffc107; color: #333; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+    .btn-primary { background-color: #007bff; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; }
+    input[type="text"], input[type="number"], input[type="file"] { padding: 6px; margin: 4px; }
+    .format-box { background: #e9ecef; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 13px; }
+  </style>
+</head>
+<body>
 
-app.use(session({
-  secret: 'storage_secret_key',
-  resave: false,
-  saveUninitialized: true,
-  cookie: { secure: false }
-}));
+  <div class="header-bar">
+    <h1>機械手臂格位與倉儲管理系統</h1>
+    <button class="btn-danger" onclick="logout()" style="padding: 10px 18px;">登出系統</button>
+  </div>
 
-const DATA_FILE = path.join(__dirname, 'data.json');
+  <!-- 1. 教室/倉儲區頁籤 -->
+  <div class="tabs-container" id="tabsContainer"></div>
 
-// 載入持久化 JSON 資料
-function loadData() {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+  <!-- 2. 教室與格位矩陣設定 -->
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h2 id="currentClassroomTitle">教室格位設定</h2>
+      <button class="btn-danger" onclick="deleteCurrentClassroom()">刪除此教室</button>
+    </div>
+    <div style="margin-top: 10px;">
+      <label>教室名稱：</label>
+      <input type="text" id="editName" placeholder="例如: 101 機械教室">
+      <label>矩陣規格 (列 Row)：</label>
+      <input type="number" id="editRows" min="1" max="10" value="4" style="width: 60px;">
+      <label>× (行 Col)：</label>
+      <input type="number" id="editCols" min="1" max="10" value="6" style="width: 60px;">
+      <button class="btn-primary" onclick="saveClassroomConfig()">更新矩陣設定</button>
+    </div>
+  </div>
+
+  <!-- 3. 匯入格位 CSV -->
+  <div class="card">
+    <h3>匯入此教室的格位物品 CSV / Excel</h3>
+    <div class="format-box">
+      <strong>CSV 欄位格式範例：</strong><br>
+      列 (Row), 行 (Column), 存放物品/器材名稱, 借用者/班級<br>
+      <em>範例：1, 2, 夾爪零組件, 資訊二甲</em>
+    </div>
+    <br>
+    <input type="file" id="csvFileInput" accept=".csv, .xlsx, .xls">
+    <button class="btn-primary" onclick="uploadCsv()">上傳並帶入格位</button>
+    <button class="btn-warning" onclick="clearSlots()">清空所有格位</button>
+  </div>
+
+  <!-- 4. 機械手臂視覺化儲位格 -->
+  <div class="card">
+    <h3>機械手臂儲位矩陣視圖 (點擊格位可編輯)</h3>
+    <div class="grid-container" id="matrixGrid"></div>
+  </div>
+
+  <script>
+    let classrooms = {};
+    let activeClassroomIndex = null;
+
+    async function loadClassrooms() {
+      const res = await fetch('/api/classrooms');
+      const result = await res.json();
+      if (result.success) {
+        classrooms = result.data;
+        const keys = Object.keys(classrooms);
+        if (keys.length > 0 && (!activeClassroomIndex || !classrooms[activeClassroomIndex])) {
+          activeClassroomIndex = keys[0];
+        }
+        renderTabs();
+        renderCurrentMatrix();
+      }
     }
-  } catch (err) {
-    console.error('讀取 data.json 失敗:', err.message);
-  }
-  return {
-    "room_101": {
-      id: "room_101",
-      name: "101 機械教室",
-      rows: 4, // 4 列
-      cols: 6, // 6 行
-      slots: {} // 格位資料 { "1_1": { itemName: "螺絲起子組", borrower: "張老師" } }
+
+    function renderTabs() {
+      const container = document.getElementById('tabsContainer');
+      container.innerHTML = '';
+
+      for (const [id, room] of Object.entries(classrooms)) {
+        const btn = document.createElement('button');
+        btn.className = `tab-btn ${id === activeClassroomIndex ? 'active' : ''}`;
+        btn.innerText = room.name;
+        btn.onclick = () => {
+          activeClassroomIndex = id;
+          renderTabs();
+          renderCurrentMatrix();
+        };
+        container.appendChild(btn);
+      }
+
+      const addBtn = document.createElement('button');
+      addBtn.className = 'tab-add-btn';
+      addBtn.innerText = '+ 新增教室/倉庫';
+      addBtn.onclick = addNewClassroom;
+      container.appendChild(addBtn);
     }
-  };
-}
 
-function saveData(data) {
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch (err) {
-    console.error('寫入 data.json 失敗:', err.message);
-  }
-}
+    function renderCurrentMatrix() {
+      const room = classrooms[activeClassroomIndex];
+      if (!room) return;
 
-let classroomStore = loadData();
+      document.getElementById('currentClassroomTitle').innerText = `教室設定：${room.name}`;
+      document.getElementById('editName').value = room.name;
+      document.getElementById('editRows').value = room.rows || 4;
+      document.getElementById('editCols').value = room.cols || 6;
 
-app.get('/ping', (req, res) => res.send('pong'));
+      const grid = document.getElementById('matrixGrid');
+      const rows = parseInt(room.rows) || 4;
+      const cols = parseInt(room.cols) || 6;
 
-// 1. 登入 / 登出
-app.post('/api/login', (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ success: false, message: '請輸入帳號與密碼！' });
-  req.session.user = { username };
-  res.json({ success: true, message: '登入成功！' });
-});
+      grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      grid.innerHTML = '';
 
-app.post('/api/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.clearCookie('connect.sid');
-    res.json({ success: true, message: '已成功登出' });
-  });
-});
+      for (let r = 1; r <= rows; r++) {
+        for (let c = 1; c <= cols; c++) {
+          const slotKey = `${r}_${c}`;
+          const slot = room.slots ? room.slots[slotKey] : null;
 
-// 2. 教室 / 倉儲區管理
-app.get('/api/classrooms', (req, res) => {
-  res.json({ success: true, data: classroomStore });
-});
+          const box = document.createElement('div');
+          box.className = `grid-box ${slot && slot.itemName ? 'occupied' : ''}`;
+          box.onclick = () => editSlot(r, c, slot);
 
-// 新增或更新教室與格位矩陣 (列 x 行)
-app.post('/api/classrooms/save', (req, res) => {
-  const { id, name, rows, cols } = req.body;
-  if (!name) return res.status(400).json({ success: false, message: '教室名稱為必填！' });
+          box.innerHTML = `
+            <div><strong>格位 [${r}, ${c}]</strong></div>
+            <div style="margin: 6px 0; font-size: 14px; font-weight: bold; color: #333;">
+              ${slot && slot.itemName ? slot.itemName : '<span style="color:#aaa;">(空位)</span>'}
+            </div>
+            <div style="font-size: 12px; color: #666;">
+              ${slot && slot.borrower ? '借用: ' + slot.borrower : ''}
+            </div>
+          `;
+          grid.appendChild(box);
+        }
+      }
+    }
 
-  const classId = id || ('room_' + Date.now().toString(36));
-  const r = parseInt(rows) || 4;
-  const c = parseInt(cols) || 6;
+    async function editSlot(row, col, currentSlot) {
+      const currentName = currentSlot ? currentSlot.itemName : '';
+      const currentBorrower = currentSlot ? currentSlot.borrower : '';
 
-  if (!classroomStore[classId]) {
-    classroomStore[classId] = { id: classId, name, rows: r, cols: c, slots: {} };
-  } else {
-    classroomStore[classId].name = name;
-    classroomStore[classId].rows = r;
-    classroomStore[classId].cols = c;
-  }
+      const itemName = prompt(`修改格位 [${row}, ${col}] 放置物品名稱 (留空代表清空)：`, currentName);
+      if (itemName === null) return;
 
-  saveData(classroomStore);
-  res.json({ success: true, message: '教室與格位矩陣設定已儲存！', id: classId });
-});
+      let borrower = '';
+      if (itemName.trim() !== '') {
+        borrower = prompt(`請輸入借用者/班級 (可留空)：`, currentBorrower) || '';
+      }
 
-// 刪除教室
-app.delete('/api/classrooms/:id', (req, res) => {
-  const { id } = req.params;
-  if (classroomStore[id]) {
-    delete classroomStore[id];
-    saveData(classroomStore);
-    res.json({ success: true, message: '教室已刪除！' });
-  } else {
-    res.status(404).json({ success: false, message: '找不到該教室' });
-  }
-});
+      const res = await fetch(`/api/classrooms/${activeClassroomIndex}/slot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ row, col, itemName: itemName.trim(), borrower: borrower.trim() })
+      });
+      const result = await res.json();
+      if (result.success) loadClassrooms();
+    }
 
-// 3. 單格格位更新 API
-app.post('/api/classrooms/:id/slot', (req, res) => {
-  const { id } = req.params;
-  const { row, col, itemName, borrower } = req.body;
-  if (!classroomStore[id]) return res.status(404).json({ success: false, message: '找不到該教室' });
+    async function addNewClassroom() {
+      const name = prompt('請輸入新教室/倉庫名稱：', '新機械教室');
+      if (!name) return;
 
-  const slotKey = `${row}_${col}`;
-  if (!itemName && !borrower) {
-    delete classroomStore[id].slots[slotKey]; // 清空該格
-  } else {
-    classroomStore[id].slots[slotKey] = { row, col, itemName: itemName || '', borrower: borrower || '' };
-  }
+      const res = await fetch('/api/classrooms/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, rows: 4, cols: 6 })
+      });
+      const result = await res.json();
+      if (result.success) {
+        activeClassroomIndex = result.id;
+        loadClassrooms();
+      }
+    }
 
-  saveData(classroomStore);
-  res.json({ success: true, message: '格位資料已更新！' });
-});
+    async function saveClassroomConfig() {
+      const name = document.getElementById('editName').value.trim();
+      const rows = document.getElementById('editRows').value;
+      const cols = document.getElementById('editCols').value;
 
-// 4. 機械手臂格位 CSV / Excel 批次匯入
-app.post('/api/classrooms/:id/upload-csv', upload.single('file'), (req, res) => {
-  const { id } = req.params;
-  if (!classroomStore[id]) return res.status(404).json({ success: false, message: '找不到該教室' });
-  if (!req.file) return res.status(400).json({ success: false, message: '請選擇 CSV/Excel 檔案' });
+      const res = await fetch('/api/classrooms/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: activeClassroomIndex, name, rows, cols })
+      });
+      const result = await res.json();
+      alert(result.message);
+      if (result.success) loadClassrooms();
+    }
 
-  try {
-    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+    async function deleteCurrentClassroom() {
+      if (!confirm(`確定要刪除「${classrooms[activeClassroomIndex].name}」嗎？`)) return;
 
-    let count = 0;
-    rows.forEach((row) => {
-      if (!row || row.length < 3) return;
+      const res = await fetch(`/api/classrooms/${activeClassroomIndex}`, { method: 'DELETE' });
+      const result = await res.json();
+      alert(result.message);
+      if (result.success) {
+        activeClassroomIndex = null;
+        loadClassrooms();
+      }
+    }
 
-      const r = String(row[0]).trim();         // 列 (Row)
-      const c = String(row[1]).trim();         // 行 (Col)
-      const itemName = String(row[2]).trim();  // 存放物品/器材
-      const borrower = row[3] ? String(row[3]).trim() : ''; // 借用人/班級
+    async function uploadCsv() {
+      const fileInput = document.getElementById('csvFileInput');
+      if (!fileInput.files[0]) {
+        alert('請先選擇 CSV 或 Excel 檔案！');
+        return;
+      }
 
-      if (r.includes('列') || c.includes('行')) return; // 忽略標題列
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
 
-      const slotKey = `${r}_${c}`;
-      classroomStore[id].slots[slotKey] = { row: r, col: c, itemName, borrower };
-      count++;
-    });
+      const res = await fetch(`/api/classrooms/${activeClassroomIndex}/upload-csv`, {
+        method: 'POST',
+        body: formData
+      });
+      const result = await res.json();
+      alert(result.message);
+      if (result.success) {
+        fileInput.value = '';
+        loadClassrooms();
+      }
+    }
 
-    saveData(classroomStore);
-    res.json({ success: true, message: `成功匯入 ${count} 個格位資料至「${classroomStore[id].name}」！` });
-  } catch (err) {
-    res.status(500).json({ success: false, message: '解析失敗：' + err.message });
-  }
-});
+    async function clearSlots() {
+      if (!confirm('確定要清空這個教室的所有格位嗎？')) return;
+      const res = await fetch(`/api/classrooms/${activeClassroomIndex}/clear-slots`, { method: 'DELETE' });
+      const result = await res.json();
+      alert(result.message);
+      if (result.success) loadClassrooms();
+    }
 
-// 清空教室所有格位
-app.delete('/api/classrooms/:id/clear-slots', (req, res) => {
-  const { id } = req.params;
-  if (classroomStore[id]) {
-    classroomStore[id].slots = {};
-    saveData(classroomStore);
-    res.json({ success: true, message: '已清空該教室所有機械手臂格位資料！' });
-  } else {
-    res.status(404).json({ success: false, message: '找不到該教室' });
-  }
-});
+    async function logout() {
+      if (!confirm('確定要登出嗎？')) return;
+      const res = await fetch('/api/logout', { method: 'POST' });
+      const result = await res.json();
+      if (result.success) window.location.href = '/index.html';
+    }
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    loadClassrooms();
+  </script>
+</body>
+</html>
