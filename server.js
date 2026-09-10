@@ -3,6 +3,7 @@ const session = require('express-session');
 const multer = require('multer');
 const xlsx = require('xlsx');
 const path = require('path');
+const https = require('https');
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -20,6 +21,20 @@ app.use(session({
 
 // 記憶體資料庫（儲存課表紀錄）
 let scheduleDatabase = {};
+
+// 健康檢查 / 保活端點 (Self-Ping)
+app.get('/ping', (req, res) => {
+  res.send('pong');
+});
+
+// 每 10 分鐘自動對自己發送 Ping 請求，避免 Render 休眠
+setInterval(() => {
+  https.get('https://storage-system-kqwy.onrender.com/ping', (res) => {
+    console.log(`Self-ping status: ${res.statusCode}`);
+  }).on('error', (err) => {
+    console.error('Self-ping error:', err.message);
+  });
+}, 10 * 60 * 1000);
 
 // 1. 取得所有課表
 app.get('/api/schedule', (req, res) => {
@@ -93,22 +108,7 @@ app.delete('/api/schedule-all', (req, res) => {
   res.json({ success: true, message: '已清空所有課表資料！' });
 });
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-const https = require('https');
-
-// 每 10 分鐘 (600,000 毫秒) 自動發送一次 Ping 請求給自己
-setInterval(() => {
-  https.get('https://storage-system-kqwy.onrender.com/ping', (res) => {
-    console.log(`Self-ping status: ${res.statusCode}`);
-  }).on('error', (err) => {
-    console.error('Self-ping error:', err.message);
-  });
-}, 10 * 60 * 1000);
-
-// 登出 API
+// 6. 登出 API
 app.post('/api/logout', (req, res) => {
   req.session.destroy((err) => {
     if (err) {
@@ -117,4 +117,9 @@ app.post('/api/logout', (req, res) => {
     res.clearCookie('connect.sid');
     res.json({ success: true, message: '已成功登出' });
   });
+});
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
