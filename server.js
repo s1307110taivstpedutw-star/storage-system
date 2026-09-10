@@ -21,17 +21,45 @@ app.use(session({
 // 記憶體資料庫（儲存課表紀錄）
 let scheduleDatabase = {};
 
-// 健康檢查端點（讓外部 UptimeRobot 或手動測試使用）
+// 健康檢查端點 (讓外部 UptimeRobot 或手動 Ping 使用)
 app.get('/ping', (req, res) => {
   res.send('pong');
 });
 
-// 1. 取得所有課表
+// ==================== 1. 帳號登入與登出 API ====================
+
+// 登入 API
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  
+  if (!username || !password) {
+    return res.status(400).json({ success: false, message: '請輸入帳號與密碼！' });
+  }
+
+  // 記錄 Session 並登入成功
+  req.session.user = { username };
+  res.json({ success: true, message: '登入成功！' });
+});
+
+// 登出 API
+app.post('/api/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ success: false, message: '登出失敗' });
+    }
+    res.clearCookie('connect.sid');
+    res.json({ success: true, message: '已成功登出' });
+  });
+});
+
+// ==================== 2. 課表管理 API ====================
+
+// 取得所有課表
 app.get('/api/schedule', (req, res) => {
   res.json({ success: true, data: scheduleDatabase });
 });
 
-// 2. 匯入 Excel/CSV 檔案
+// 匯入 Excel/CSV 檔案
 app.post('/api/schedule/upload-excel', upload.single('file'), (req, res) => {
   try {
     if (!req.file) {
@@ -68,7 +96,7 @@ app.post('/api/schedule/upload-excel', upload.single('file'), (req, res) => {
   }
 });
 
-// 3. 新增 / 更新單筆資料
+// 新增 / 更新單筆資料
 app.post('/api/schedule/save', (req, res) => {
   const { id, classroom, day, borrowTime, returnTime, className, teacher } = req.body;
   if (!classroom || !day || !borrowTime || !returnTime || !className) {
@@ -81,7 +109,7 @@ app.post('/api/schedule/save', (req, res) => {
   res.json({ success: true, message: id ? '更新成功！' : '新增成功！' });
 });
 
-// 4. 刪除單筆資料
+// 刪除單筆資料
 app.delete('/api/schedule/:id', (req, res) => {
   const { id } = req.params;
   if (scheduleDatabase[id]) {
@@ -92,21 +120,10 @@ app.delete('/api/schedule/:id', (req, res) => {
   }
 });
 
-// 5. 清空所有資料
+// 清空所有資料
 app.delete('/api/schedule-all', (req, res) => {
   scheduleDatabase = {};
   res.json({ success: true, message: '已清空所有課表資料！' });
-});
-
-// 6. 登出 API
-app.post('/api/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ success: false, message: '登出失敗' });
-    }
-    res.clearCookie('connect.sid');
-    res.json({ success: true, message: '已成功登出' });
-  });
 });
 
 const PORT = process.env.PORT || 10000;
