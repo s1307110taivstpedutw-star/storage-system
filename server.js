@@ -3,6 +3,7 @@ const session = require('express-session');
 const multer = require('multer');
 const xlsx = require('xlsx');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -18,15 +19,40 @@ app.use(session({
   cookie: { secure: false }
 }));
 
-// 記憶體資料庫：以教室為單位儲存
-let classroomStore = {
-  "default_101": {
-    id: "default_101",
-    name: "101 教室",
-    slots: 8, // 預設 8 節課/格位
-    schedule: {}
+// 資料存檔路徑
+const DATA_FILE = path.join(__dirname, 'data.json');
+
+// 讀取永久儲存的資料（若無則給予預設值）
+function loadData() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const fileData = fs.readFileSync(DATA_FILE, 'utf8');
+      return JSON.parse(fileData);
+    }
+  } catch (err) {
+    console.error('讀取 data.json 失敗:', err.message);
   }
-};
+  return {
+    "default_101": {
+      id: "default_101",
+      name: "101 教室",
+      slots: 8,
+      schedule: {}
+    }
+  };
+}
+
+// 將資料寫入檔案永久保存
+function saveData(data) {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+  } catch (err) {
+    console.error('寫入 data.json 失敗:', err.message);
+  }
+}
+
+// 初始化資料庫
+let classroomStore = loadData();
 
 app.get('/ping', (req, res) => res.send('pong'));
 
@@ -64,6 +90,7 @@ app.post('/api/classrooms/save', (req, res) => {
     classroomStore[classId].slots = parseInt(slots) || 8;
   }
 
+  saveData(classroomStore); // 存入檔案
   res.json({ success: true, message: '教室設定已儲存！', id: classId });
 });
 
@@ -72,6 +99,7 @@ app.delete('/api/classrooms/:id', (req, res) => {
   const { id } = req.params;
   if (classroomStore[id]) {
     delete classroomStore[id];
+    saveData(classroomStore); // 存入檔案
     res.json({ success: true, message: '教室已刪除！' });
   } else {
     res.status(404).json({ success: false, message: '找不到該教室' });
@@ -79,7 +107,6 @@ app.delete('/api/classrooms/:id', (req, res) => {
 });
 
 // 3. 該教室專屬課表與 CSV 匯入 API
-// 匯入指定教室的 CSV/Excel
 app.post('/api/classrooms/:id/upload-csv', upload.single('file'), (req, res) => {
   const { id } = req.params;
   if (!classroomStore[id]) return res.status(404).json({ success: false, message: '找不到該教室' });
@@ -91,22 +118,22 @@ app.post('/api/classrooms/:id/upload-csv', upload.single('file'), (req, res) => 
     const rows = xlsx.utils.sheet_to_json(sheet, { header: 1 });
 
     let count = 0;
-    // 重置該教室課表或追加
     rows.forEach((row) => {
-      if (!row || row.length < 4) return;
+      if (!row || row.length < 3) return;
       
-      const day = String(row[0]).trim();        // 星期 (例如: 1)
-      const slot = String(row[1]).trim();       // 節次/格位 (例如: 1)
+      const day = String(row[0]).trim();        // 星期 (1-7)
+      const slot = String(row[1]).trim();       // 節次/格位 (1-8)
       const className = String(row[2]).trim();  // 班級/課程
       const teacher = row[3] ? String(row[3]).trim() : ''; // 教師
 
-      if (day.includes('星期') || slot.includes('節')) return; // 跳過標題
+      if (day.includes('星期') || slot.includes('節')) return;
 
       const itemKey = `${day}_${slot}`;
       classroomStore[id].schedule[itemKey] = { day, slot, className, teacher };
       count++;
     });
 
+    saveData(classroomStore); // 存入檔案
     res.json({ success: true, message: `成功匯入 ${count} 筆課表資料至「${classroomStore[id].name}」！` });
   } catch (err) {
     res.status(500).json({ success: false, message: '解析失敗：' + err.message });
@@ -118,6 +145,7 @@ app.delete('/api/classrooms/:id/clear-schedule', (req, res) => {
   const { id } = req.params;
   if (classroomStore[id]) {
     classroomStore[id].schedule = {};
+    saveData(classroomStore); // 存入檔案
     res.json({ success: true, message: '已清空該教室所有課表資料！' });
   } else {
     res.status(404).json({ success: false, message: '找不到該教室' });
