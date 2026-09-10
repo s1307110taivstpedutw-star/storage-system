@@ -2,90 +2,97 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>機械手臂倉儲與格位管理系統</title>
+  <title>機械手臂鑰匙格位管理系統</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f6f9; }
     .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
     .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    
-    /* 教室頁籤 */
+
     .tabs-container { display: flex; gap: 8px; border-bottom: 2px solid #ccc; margin-bottom: 20px; overflow-x: auto; }
     .tab-btn { padding: 10px 20px; background: #e9ecef; border: none; border-top-left-radius: 6px; border-top-right-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; color: #495057; }
     .tab-btn.active { background: #007bff; color: white; }
     .tab-add-btn { background: #28a745; color: white; border-radius: 6px; padding: 10px 15px; border: none; cursor: pointer; }
 
-    /* 機械手臂視覺化格位矩陣 */
-    .grid-container { display: grid; gap: 12px; margin-top: 15px; }
-    .grid-box { border: 2px dashed #bbb; border-radius: 8px; padding: 12px; background: #fafafa; text-align: center; min-height: 80px; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; transition: 0.2s; }
-    .grid-box:hover { border-color: #007bff; background: #f0f8ff; }
-    .grid-box.occupied { border-style: solid; border-color: #28a745; background: #e8f5e9; }
+    /* 格位矩陣 */
+    .grid-container { display: grid; gap: 10px; margin-top: 15px; }
+    .grid-box { border: 2px dashed #ccc; border-radius: 8px; padding: 10px; background: #fafafa; text-align: center; min-height: 85px; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; transition: 0.2s; }
+    .grid-box:hover { border-color: #007bff; transform: translateY(-2px); }
+    
+    /* 在位（可借用）: 綠色 */
+    .grid-box.available { border-style: solid; border-color: #28a745; background: #e8f5e9; }
+    /* 已借出: 紅色/橘色 */
+    .grid-box.borrowed { border-style: solid; border-color: #dc3545; background: #ffebee; }
 
     .btn-danger { background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
     .btn-warning { background-color: #ffc107; color: #333; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
     .btn-primary { background-color: #007bff; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; }
     input[type="text"], input[type="number"], input[type="file"] { padding: 6px; margin: 4px; }
     .format-box { background: #e9ecef; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 13px; }
+    .badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; color: white; }
+    .badge-in { background-color: #28a745; }
+    .badge-out { background-color: #dc3545; }
   </style>
 </head>
 <body>
 
   <div class="header-bar">
-    <h1>機械手臂格位與倉儲管理系統</h1>
+    <h1>機械手臂鑰匙格位管理系統</h1>
     <button class="btn-danger" onclick="logout()" style="padding: 10px 18px;">登出系統</button>
   </div>
 
-  <!-- 1. 教室/倉儲區頁籤 -->
+  <!-- 鑰匙櫃頁籤 -->
   <div class="tabs-container" id="tabsContainer"></div>
 
-  <!-- 2. 教室與格位矩陣設定 -->
+  <!-- 鑰匙櫃尺寸設定 -->
   <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
-      <h2 id="currentClassroomTitle">教室格位設定</h2>
-      <button class="btn-danger" onclick="deleteCurrentClassroom()">刪除此教室</button>
+      <h2 id="currentCabinetTitle">鑰匙櫃設定</h2>
+      <button class="btn-danger" onclick="deleteCurrentCabinet()">刪除此鑰匙櫃</button>
     </div>
     <div style="margin-top: 10px;">
-      <label>教室名稱：</label>
-      <input type="text" id="editName" placeholder="例如: 101 機械教室">
+      <label>鑰匙櫃名稱：</label>
+      <input type="text" id="editName" placeholder="例如: 主機械手臂鑰匙櫃">
       <label>矩陣規格 (列 Row)：</label>
-      <input type="number" id="editRows" min="1" max="10" value="4" style="width: 60px;">
+      <input type="number" id="editRows" min="1" max="15" value="5" style="width: 60px;">
       <label>× (行 Col)：</label>
-      <input type="number" id="editCols" min="1" max="10" value="6" style="width: 60px;">
-      <button class="btn-primary" onclick="saveClassroomConfig()">更新矩陣設定</button>
+      <input type="number" id="editCols" min="1" max="15" value="8" style="width: 60px;">
+      <button class="btn-primary" onclick="saveCabinetConfig()">更新矩陣設定</button>
     </div>
   </div>
 
-  <!-- 3. 匯入格位 CSV -->
+  <!-- CSV 匯入鑰匙點位 -->
   <div class="card">
-    <h3>匯入此教室的格位物品 CSV / Excel</h3>
+    <h3>批次匯入鑰匙格位設定 (CSV / Excel)</h3>
     <div class="format-box">
       <strong>CSV 欄位格式範例：</strong><br>
-      列 (Row), 行 (Column), 存放物品/器材名稱, 借用者/班級<br>
-      <em>範例：1, 2, 夾爪零組件, 資訊二甲</em>
+      列 (Row), 行 (Column), 鑰匙名稱/編號, 借用者 (無人借則留空)<br>
+      <em>範例：1, 1, 101 電腦教室鑰匙, 張老師</em><br>
+      <em>範例：1, 2, 202 創客教室鑰匙, </em>
     </div>
     <br>
     <input type="file" id="csvFileInput" accept=".csv, .xlsx, .xls">
-    <button class="btn-primary" onclick="uploadCsv()">上傳並帶入格位</button>
+    <button class="btn-primary" onclick="uploadCsv()">上傳並匯入格位</button>
     <button class="btn-warning" onclick="clearSlots()">清空所有格位</button>
   </div>
 
-  <!-- 4. 機械手臂視覺化儲位格 -->
+  <!-- 視覺化鑰匙格位矩陣視圖 -->
   <div class="card">
-    <h3>機械手臂儲位矩陣視圖 (點擊格位可編輯)</h3>
+    <h3>機械手臂鑰匙牆矩陣視圖 (點擊格位可設定鑰匙或登記借還)</h3>
     <div class="grid-container" id="matrixGrid"></div>
   </div>
 
   <script>
-    let classrooms = {};
-    let activeClassroomIndex = null;
+    let cabinets = {};
+    let activeCabinetId = null;
 
-    async function loadClassrooms() {
-      const res = await fetch('/api/classrooms');
+    async function loadCabinets() {
+      const res = await fetch('/api/cabinets');
       const result = await res.json();
       if (result.success) {
-        classrooms = result.data;
-        const keys = Object.keys(classrooms);
-        if (keys.length > 0 && (!activeClassroomIndex || !classrooms[activeClassroomIndex])) {
-          activeClassroomIndex = keys[0];
+        cabinets = result.data;
+        const keys = Object.keys(cabinets);
+        if (keys.length > 0 && (!activeCabinetId || !cabinets[activeCabinetId])) {
+          activeCabinetId = keys[0];
         }
         renderTabs();
         renderCurrentMatrix();
@@ -96,12 +103,12 @@
       const container = document.getElementById('tabsContainer');
       container.innerHTML = '';
 
-      for (const [id, room] of Object.entries(classrooms)) {
+      for (const [id, cab] of Object.entries(cabinets)) {
         const btn = document.createElement('button');
-        btn.className = `tab-btn ${id === activeClassroomIndex ? 'active' : ''}`;
-        btn.innerText = room.name;
+        btn.className = `tab-btn ${id === activeCabinetId ? 'active' : ''}`;
+        btn.innerText = cab.name;
         btn.onclick = () => {
-          activeClassroomIndex = id;
+          activeCabinetId = id;
           renderTabs();
           renderCurrentMatrix();
         };
@@ -110,23 +117,23 @@
 
       const addBtn = document.createElement('button');
       addBtn.className = 'tab-add-btn';
-      addBtn.innerText = '+ 新增教室/倉庫';
-      addBtn.onclick = addNewClassroom;
+      addBtn.innerText = '+ 新增鑰匙櫃';
+      addBtn.onclick = addNewCabinet;
       container.appendChild(addBtn);
     }
 
     function renderCurrentMatrix() {
-      const room = classrooms[activeClassroomIndex];
-      if (!room) return;
+      const cab = cabinets[activeCabinetId];
+      if (!cab) return;
 
-      document.getElementById('currentClassroomTitle').innerText = `教室設定：${room.name}`;
-      document.getElementById('editName').value = room.name;
-      document.getElementById('editRows').value = room.rows || 4;
-      document.getElementById('editCols').value = room.cols || 6;
+      document.getElementById('currentCabinetTitle').innerText = `鑰匙櫃設定：${cab.name}`;
+      document.getElementById('editName').value = cab.name;
+      document.getElementById('editRows').value = cab.rows || 5;
+      document.getElementById('editCols').value = cab.cols || 8;
 
       const grid = document.getElementById('matrixGrid');
-      const rows = parseInt(room.rows) || 4;
-      const cols = parseInt(room.cols) || 6;
+      const rows = parseInt(cab.rows) || 5;
+      const cols = parseInt(cab.cols) || 8;
 
       grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
       grid.innerHTML = '';
@@ -134,19 +141,27 @@
       for (let r = 1; r <= rows; r++) {
         for (let c = 1; c <= cols; c++) {
           const slotKey = `${r}_${c}`;
-          const slot = room.slots ? room.slots[slotKey] : null;
+          const slot = cab.slots ? cab.slots[slotKey] : null;
+
+          const hasKey = slot && slot.keyName && slot.keyName.trim() !== '';
+          const isBorrowed = hasKey && slot.borrower && slot.borrower.trim() !== '';
+
+          let statusClass = '';
+          if (hasKey) {
+            statusClass = isBorrowed ? 'borrowed' : 'available';
+          }
 
           const box = document.createElement('div');
-          box.className = `grid-box ${slot && slot.itemName ? 'occupied' : ''}`;
+          box.className = `grid-box ${statusClass}`;
           box.onclick = () => editSlot(r, c, slot);
 
           box.innerHTML = `
-            <div><strong>格位 [${r}, ${c}]</strong></div>
-            <div style="margin: 6px 0; font-size: 14px; font-weight: bold; color: #333;">
-              ${slot && slot.itemName ? slot.itemName : '<span style="color:#aaa;">(空位)</span>'}
+            <div style="font-size: 12px; color: #777;">格位 [${r}, ${c}]</div>
+            <div style="margin: 6px 0; font-size: 14px; font-weight: bold;">
+              ${hasKey ? slot.keyName : '<span style="color:#bbb;">(無鑰匙)</span>'}
             </div>
-            <div style="font-size: 12px; color: #666;">
-              ${slot && slot.borrower ? '借用: ' + slot.borrower : ''}
+            <div>
+              ${hasKey ? (isBorrowed ? `<span class="badge badge-out">借出: ${slot.borrower}</span>` : '<span class="badge badge-in">在位 (可借)</span>') : ''}
             </div>
           `;
           grid.appendChild(box);
@@ -155,66 +170,66 @@
     }
 
     async function editSlot(row, col, currentSlot) {
-      const currentName = currentSlot ? currentSlot.itemName : '';
+      const currentKey = currentSlot ? currentSlot.keyName : '';
       const currentBorrower = currentSlot ? currentSlot.borrower : '';
 
-      const itemName = prompt(`修改格位 [${row}, ${col}] 放置物品名稱 (留空代表清空)：`, currentName);
-      if (itemName === null) return;
+      const keyName = prompt(`修改格位 [${row}, ${col}] 設定的鑰匙名稱 (清空代表此格無鑰匙)：`, currentKey);
+      if (keyName === null) return;
 
       let borrower = '';
-      if (itemName.trim() !== '') {
-        borrower = prompt(`請輸入借用者/班級 (可留空)：`, currentBorrower) || '';
+      if (keyName.trim() !== '') {
+        borrower = prompt(`登記借用人 (留空表示「鑰匙在位/可借用」)：`, currentBorrower) || '';
       }
 
-      const res = await fetch(`/api/classrooms/${activeClassroomIndex}/slot`, {
+      const res = await fetch(`/api/cabinets/${activeCabinetId}/slot`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ row, col, itemName: itemName.trim(), borrower: borrower.trim() })
+        body: JSON.stringify({ row, col, keyName: keyName.trim(), borrower: borrower.trim() })
       });
       const result = await res.json();
-      if (result.success) loadClassrooms();
+      if (result.success) loadCabinets();
     }
 
-    async function addNewClassroom() {
-      const name = prompt('請輸入新教室/倉庫名稱：', '新機械教室');
+    async function addNewCabinet() {
+      const name = prompt('請輸入新鑰匙櫃名稱：', '備用鑰匙櫃');
       if (!name) return;
 
-      const res = await fetch('/api/classrooms/save', {
+      const res = await fetch('/api/cabinets/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, rows: 4, cols: 6 })
+        body: JSON.stringify({ name, rows: 5, cols: 8 })
       });
       const result = await res.json();
       if (result.success) {
-        activeClassroomIndex = result.id;
-        loadClassrooms();
+        activeCabinetId = result.id;
+        loadCabinets();
       }
     }
 
-    async function saveClassroomConfig() {
+    async function saveCabinetConfig() {
       const name = document.getElementById('editName').value.trim();
       const rows = document.getElementById('editRows').value;
       const cols = document.getElementById('editCols').value;
 
-      const res = await fetch('/api/classrooms/save', {
+      const res = await fetch('/api/cabinets/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: activeClassroomIndex, name, rows, cols })
+        body: JSON.stringify({ id: activeCabinetId, name, rows, cols })
       });
       const result = await res.json();
       alert(result.message);
-      if (result.success) loadClassrooms();
+      if (result.success) loadCabinets();
     }
 
-    async function deleteCurrentClassroom() {
-      if (!confirm(`確定要刪除「${classrooms[activeClassroomIndex].name}」嗎？`)) return;
+    async function deleteCurrentCabinet() {
+      if (!confirm(`確定要刪除「${cabinets[activeCabinetId].name}」嗎？`)) return;
 
-      const res = await fetch(`/api/classrooms/${activeClassroomIndex}`, { method: 'DELETE' });
+      const res = await fetch(`/api/cabinets/${activeCabinetId}`, { method: 'DELETE' });
       const result = await res.json();
       alert(result.message);
       if (result.success) {
-        activeClassroomIndex = null;
-        loadClassrooms();
+        activeCabinetId = null;
+        loadCabinets();
       }
     }
 
@@ -228,7 +243,7 @@
       const formData = new FormData();
       formData.append('file', fileInput.files[0]);
 
-      const res = await fetch(`/api/classrooms/${activeClassroomIndex}/upload-csv`, {
+      const res = await fetch(`/api/cabinets/${activeCabinetId}/upload-csv`, {
         method: 'POST',
         body: formData
       });
@@ -236,16 +251,16 @@
       alert(result.message);
       if (result.success) {
         fileInput.value = '';
-        loadClassrooms();
+        loadCabinets();
       }
     }
 
     async function clearSlots() {
-      if (!confirm('確定要清空這個教室的所有格位嗎？')) return;
-      const res = await fetch(`/api/classrooms/${activeClassroomIndex}/clear-slots`, { method: 'DELETE' });
+      if (!confirm('確定要清空此鑰匙櫃的所有鑰匙格位嗎？')) return;
+      const res = await fetch(`/api/cabinets/${activeCabinetId}/clear-slots`, { method: 'DELETE' });
       const result = await res.json();
       alert(result.message);
-      if (result.success) loadClassrooms();
+      if (result.success) loadCabinets();
     }
 
     async function logout() {
@@ -255,7 +270,7 @@
       if (result.success) window.location.href = '/index.html';
     }
 
-    loadClassrooms();
+    loadCabinets();
   </script>
 </body>
 </html>
