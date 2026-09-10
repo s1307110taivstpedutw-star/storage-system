@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>教室課表設置與 CSV 匯入</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f6f9; }
+    h1, h2 { color: #333; }
+    .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+    th { background-color: #007bff; color: white; }
+    input[type="text"], textarea { width: 90%; padding: 6px; margin: 4px 0; }
+    button { background-color: #28a745; color: white; border: none; padding: 8px 16px; cursor: pointer; border-radius: 4px; }
+    button:hover { background-color: #218838; }
+    .btn-secondary { background-color: #17a2b8; }
+    .btn-secondary:hover { background-color: #138496; }
+  </style>
+</head>
+<body>
+
+  <h1>教室課表設置與匯入系統</h1>
+
+  <!-- 1. CSV 匯入區塊 -->
+  <div class="card">
+    <h2>1. 批次匯入 CSV 課表</h2>
+    <p>請貼入 CSV 內容（格式：<code>教室,星期(1-5),節次(1-8),科目,教師</code>）：</p>
+    <textarea id="csvInput" rows="5" placeholder="101,1,1,資訊概論,張老師&#10;101,1,2,資訊概論,張老師"></textarea><br>
+    <button class="btn-secondary" onclick="importCSV()">匯入 CSV 課表</button>
+  </div>
+
+  <!-- 2. 手動新增/修改單筆課表 -->
+  <div class="card">
+    <h2>2. 手動更新單筆課表</h2>
+    <label>教室：<input type="text" id="inputClassroom" placeholder="例如：101" style="width: 100px;"></label>
+    <label>星期：<input type="text" id="inputDay" placeholder="1-5" style="width: 50px;"></label>
+    <label>節次：<input type="text" id="inputPeriod" placeholder="1-8" style="width: 50px;"></label>
+    <label>科目：<input type="text" id="inputSubject" placeholder="例如：電子學" style="width: 120px;"></label>
+    <label>教師：<input type="text" id="inputTeacher" placeholder="例如：陳老師" style="width: 120px;"></label>
+    <button onclick="updateSingle()">更新課表</button>
+  </div>
+
+  <!-- 3. 目前課表預覽 -->
+  <div class="card">
+    <h2>3. 既有課表資料預覽</h2>
+    <button class="btn-secondary" onclick="loadSchedule()">重新整理課表列表</button>
+    <table id="scheduleTable">
+      <thead>
+        <tr>
+          <th>教室-星期-節次</th>
+          <th>科目</th>
+          <th>授課教師</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="3">尚無資料，請先匯入或查詢。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    // 讀取所有課表
+    async function loadSchedule() {
+      const res = await fetch('/api/schedule');
+      const result = await res.json();
+      const tbody = document.querySelector('#scheduleTable tbody');
+      tbody.innerHTML = '';
+
+      if (result.success && Object.keys(result.data).length > 0) {
+        for (const [key, item] of Object.entries(result.data)) {
+          const row = `<tr>
+            <td>${key}</td>
+            <td>${item.subject || '-'}</td>
+            <td>${item.teacher || '-'}</td>
+          </tr>`;
+          tbody.innerHTML += row;
+        }
+      } else {
+        tbody.innerHTML = '<tr><td colspan="3">目前尚無課表資料</td></tr>';
+      }
+    }
+
+    // 手動單筆更新
+    async function updateSingle() {
+      const classroom = document.getElementById('inputClassroom').value;
+      const day = document.getElementById('inputDay').value;
+      const period = document.getElementById('inputPeriod').value;
+      const subject = document.getElementById('inputSubject').value;
+      const teacher = document.getElementById('inputTeacher').value;
+
+      const res = await fetch('/api/schedule/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ classroom, day, period, subject, teacher })
+      });
+      const result = await res.json();
+      alert(result.message);
+      if (result.success) loadSchedule();
+    }
+
+    // CSV 文字匯入
+    async function importCSV() {
+      const csvText = document.getElementById('csvInput').value;
+      const res = await fetch('/api/schedule/import-csv-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csvText })
+      });
+      const result = await res.json();
+      alert(result.message);
+      if (result.success) loadSchedule();
+    }
+
+    // 頁面載入時自動讀取課表
+    loadSchedule();
+  </script>
+</body>
+</html>
