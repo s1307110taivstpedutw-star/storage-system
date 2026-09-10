@@ -107,3 +107,14 @@ setInterval(() => {
     console.error('Self-ping error:', err.message);
   });
 }, 10 * 60 * 1000);
+
+// 登出 API
+app.post('/api/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ success: false, message: '登出失敗' });
+    }
+    res.clearCookie('connect.sid');
+    res.json({ success: true, message: '已成功登出' });
+  });
+});
