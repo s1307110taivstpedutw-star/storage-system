@@ -1,8 +1,6 @@
 ```javascript
 let currentUser = null;
 
-let classrooms = [];
-
 let slots = [];
 
 
@@ -17,24 +15,15 @@ function escapeHTML(value) {
     value === null ||
     value === undefined
   ) {
-
     return "";
-
   }
 
-
   return String(value)
-
     .replace(/&/g, "&amp;")
-
     .replace(/</g, "&lt;")
-
     .replace(/>/g, "&gt;")
-
     .replace(/"/g, "&quot;")
-
     .replace(/'/g, "&#039;");
-
 }
 
 
@@ -50,7 +39,6 @@ async function init() {
     const meResponse =
       await fetch("/api/me");
 
-
     if (!meResponse.ok) {
 
       throw new Error(
@@ -59,10 +47,8 @@ async function init() {
 
     }
 
-
     const me =
       await meResponse.json();
-
 
     if (!me.loggedIn) {
 
@@ -73,28 +59,21 @@ async function init() {
 
     }
 
-
     currentUser =
       me.user;
-
 
     document.getElementById(
       "userInfo"
     ).textContent =
-
       `目前登入：${currentUser.name}（${
         currentUser.role === "admin"
           ? "管理員"
           : "教師"
       }）`;
 
-
-    await loadClassrooms();
-
     await loadBookings();
 
     await loadSlots();
-
 
   } catch (error) {
 
@@ -102,7 +81,6 @@ async function init() {
       "temporary 初始化失敗：",
       error
     );
-
 
     alert(
       "系統載入失敗：" +
@@ -116,95 +94,32 @@ async function init() {
 
 
 /* =========================
-   載入教室
-   ========================= */
-
-async function loadClassrooms() {
-
-  const response =
-    await fetch(
-      "/api/classrooms"
-    );
-
-
-  if (!response.ok) {
-
-    throw new Error(
-      "取得教室資料失敗"
-    );
-
-  }
-
-
-  const data =
-    await response.json();
-
-
-  if (!data.success) {
-
-    throw new Error(
-      data.message ||
-      "取得教室資料失敗"
-    );
-
-  }
-
-
-  classrooms =
-    Object.values(
-      data.classrooms
-    ).sort(
-      (a, b) =>
-        a.id - b.id
-    );
-
-
-  const select =
-    document.getElementById(
-      "classroom"
-    );
-
-
-  select.innerHTML = "";
-
-
-  classrooms.forEach(
-    room => {
-
-      const option =
-        document.createElement(
-          "option"
-        );
-
-
-      option.value =
-        room.id;
-
-
-      option.textContent =
-        `${room.id}. ${room.name}`;
-
-
-      select.appendChild(
-        option
-      );
-
-    }
-  );
-
-}
-
-
-
-/* =========================
    送出申請
    ========================= */
 
 async function submitBooking() {
 
+  const identity =
+    document.getElementById(
+      "identity"
+    ).value;
+
+
   const className =
     document.getElementById(
       "className"
+    ).value.trim();
+
+
+  const applicantName =
+    document.getElementById(
+      "applicantName"
+    ).value.trim();
+
+
+  const studentId =
+    document.getElementById(
+      "studentId"
     ).value.trim();
 
 
@@ -239,8 +154,15 @@ async function submitBooking() {
 
 
 
+  /* =========================
+     基本檢查
+     ========================= */
+
   if (
+    !identity ||
     !className ||
+    !applicantName ||
+    !studentId ||
     !classroomId ||
     !date ||
     !startTime ||
@@ -248,7 +170,7 @@ async function submitBooking() {
   ) {
 
     alert(
-      "請完整填寫資料"
+      "請完整填寫申請資料"
     );
 
     return;
@@ -284,7 +206,13 @@ async function submitBooking() {
 
           body: JSON.stringify({
 
+            identity,
+
             className,
+
+            applicantName,
+
+            studentId,
 
             classroomId,
 
@@ -323,8 +251,47 @@ async function submitBooking() {
     );
 
 
+    /* =====================
+       清除表單
+       ===================== */
+
+    document.getElementById(
+      "identity"
+    ).value = "";
+
+
     document.getElementById(
       "className"
+    ).value = "";
+
+
+    document.getElementById(
+      "applicantName"
+    ).value = "";
+
+
+    document.getElementById(
+      "studentId"
+    ).value = "";
+
+
+    document.getElementById(
+      "classroom"
+    ).value = "";
+
+
+    document.getElementById(
+      "date"
+    ).value = "";
+
+
+    document.getElementById(
+      "startTime"
+    ).value = "";
+
+
+    document.getElementById(
+      "endTime"
     ).value = "";
 
 
@@ -339,7 +306,6 @@ async function submitBooking() {
   } catch (error) {
 
     console.error(error);
-
 
     alert(
       "無法連線到伺服器"
@@ -414,6 +380,26 @@ function getStatusClass(status) {
 
 
 /* =========================
+   身分名稱
+   ========================= */
+
+function getIdentityText(identity) {
+
+  if (identity === "teacher") {
+    return "老師";
+  }
+
+  if (identity === "student") {
+    return "學生";
+  }
+
+  return identity || "";
+
+}
+
+
+
+/* =========================
    顯示申請
    ========================= */
 
@@ -436,7 +422,7 @@ function renderBookings(bookings) {
 
       <tr>
 
-        <td colspan="8">
+        <td colspan="10">
 
           目前沒有臨時借用申請
 
@@ -485,7 +471,6 @@ function renderBookings(bookings) {
           currentUser.role === "admin"
         ) {
 
-
           if (
             booking.status === "pending"
           ) {
@@ -494,18 +479,16 @@ function renderBookings(bookings) {
 
               <button
                 class="btn-success"
-                onclick="approveBooking(${booking.id})">
-
+                onclick="approveBooking(${booking.id})"
+              >
                 核准
-
               </button>
 
               <button
                 class="btn-danger"
-                onclick="rejectBooking(${booking.id})">
-
+                onclick="rejectBooking(${booking.id})"
+              >
                 拒絕
-
               </button>
 
             `;
@@ -521,10 +504,9 @@ function renderBookings(bookings) {
 
               <button
                 class="btn-secondary"
-                onclick="completeBooking(${booking.id})">
-
+                onclick="completeBooking(${booking.id})"
+              >
                 完成借還
-
               </button>
 
             `;
@@ -538,69 +520,70 @@ function renderBookings(bookings) {
         tr.innerHTML = `
 
           <td>
-
             <span
               class="status ${getStatusClass(
                 booking.status
-              )}">
-
+              )}"
+            >
               ${escapeHTML(
                 booking.statusText
               )}
-
             </span>
-
           </td>
 
 
           <td>
+            ${escapeHTML(
+              getIdentityText(
+                booking.identity
+              )
+            )}
+          </td>
 
+
+          <td>
             ${escapeHTML(
               booking.className
             )}
-
           </td>
 
 
           <td>
-
-            ${escapeHTML(
-              booking.classroomName
-            )}
-
-          </td>
-
-
-          <td>
-
-            ${escapeHTML(
-              booking.date
-            )}
-
-          </td>
-
-
-          <td>
-
-            ${escapeHTML(
-              booking.startTime
-            )}
-
-            ~
-
-            ${escapeHTML(
-              booking.endTime
-            )}
-
-          </td>
-
-
-          <td>
-
             ${escapeHTML(
               booking.applicantName
             )}
+          </td>
 
+
+          <td>
+            ${escapeHTML(
+              booking.studentId
+            )}
+          </td>
+
+
+          <td>
+            ${escapeHTML(
+              booking.classroomName
+            )}
+          </td>
+
+
+          <td>
+            ${escapeHTML(
+              booking.date
+            )}
+          </td>
+
+
+          <td>
+            ${escapeHTML(
+              booking.startTime
+            )}
+            ~
+            ${escapeHTML(
+              booking.endTime
+            )}
           </td>
 
 
@@ -616,9 +599,7 @@ function renderBookings(bookings) {
 
 
           <td>
-
             ${operation}
-
           </td>
 
         `;
@@ -719,7 +700,6 @@ async function approveBooking(id) {
 
     console.error(error);
 
-
     alert(
       "核准時發生錯誤"
     );
@@ -781,7 +761,6 @@ async function rejectBooking(id) {
   } catch (error) {
 
     console.error(error);
-
 
     alert(
       "拒絕時發生錯誤"
@@ -851,7 +830,6 @@ async function completeBooking(id) {
   } catch (error) {
 
     console.error(error);
-
 
     alert(
       "完成借還時發生錯誤"
@@ -960,76 +938,56 @@ function renderSlots() {
         <div class="${className}">
 
           <div class="slot-title">
-
             第 ${slot.slotId} 格
-
           </div>
 
 
           <div>
-
             ${escapeHTML(
               slot.roomName
             )}
-
           </div>
 
 
           <div>
-
             ${escapeHTML(
               slot.keyName
             )}
-
           </div>
 
 
           <div class="slot-status">
-
             狀態：
             ${escapeHTML(
               slot.status
             )}
-
           </div>
 
 
           ${
             slot.borrower
-
               ? `
-
                 <div>
-
                   班級：
                   ${escapeHTML(
                     slot.borrower
                   )}
-
                 </div>
-
               `
-
               : ""
           }
 
 
           ${
             slot.borrowTime
-
               ? `
-
                 <div>
-
                   時間：
                   ${escapeHTML(
                     slot.borrowTime
                   )}
-
                 </div>
-
               `
-
               : ""
           }
 
