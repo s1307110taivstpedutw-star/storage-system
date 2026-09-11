@@ -1,187 +1,1211 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
   <meta charset="UTF-8">
-  <title>工廠機械手臂鑰匙格位管理系統 (8 格)</title>
+
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+  <title>鑰匙與冷氣卡倉儲管理系統</title>
+
   <style>
-    body { font-family: 'Segoe UI', Microsoft JhengHei, sans-serif; margin: 20px; background-color: #f4f6f9; }
-    .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
 
-    /* 8 個格位 4x2 網格排版 */
-    .arm-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 15px; }
-    @media (max-width: 900px) { .arm-grid { grid-template-columns: repeat(2, 1fr); } }
+    * {
+      box-sizing: border-box;
+    }
 
-    .slot-box { border: 2px solid #dee2e6; border-radius: 10px; padding: 15px; background: #ffffff; text-align: center; position: relative; transition: 0.2s; min-height: 140px; display: flex; flex-direction: column; justify-content: space-between; }
-    .slot-box:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
+    body {
+      margin: 0;
+      font-family:
+        "Segoe UI",
+        "Microsoft JhengHei",
+        Arial,
+        sans-serif;
+      background: #f4f6f9;
+      color: #333;
+    }
 
-    .slot-number { position: absolute; top: 10px; left: 10px; background: #343a40; color: white; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; }
+    /* =========================
+       側欄
+       ========================= */
 
-    /* 在位狀態（綠）與借出狀態（紅） */
-    .slot-box.in-stock { border-color: #28a745; background-color: #f8fff9; }
-    .slot-box.borrowed { border-color: #dc3545; background-color: #fff8f8; }
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
 
-    .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; color: white; margin-top: 6px; }
-    .badge-success { background-color: #28a745; }
-    .badge-danger { background-color: #dc3545; }
+      width: 240px;
+      height: 100vh;
 
-    .btn-danger { background-color: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
-    .btn-warning { background-color: #ffc107; color: #333; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
-    .btn-primary { background-color: #007bff; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; }
-    input[type="file"] { padding: 6px; margin: 4px; }
-    .format-box { background: #e9ecef; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 13px; }
+      background: #1f2937;
+      color: white;
+
+      padding: 20px 15px;
+
+      overflow-y: auto;
+    }
+
+    .system-title {
+      font-size: 20px;
+      font-weight: bold;
+
+      padding: 10px 8px 25px;
+
+      line-height: 1.5;
+    }
+
+    .menu-title {
+      font-size: 12px;
+      color: #9ca3af;
+
+      padding: 10px 10px 6px;
+    }
+
+    .menu-item {
+      display: block;
+
+      width: 100%;
+
+      padding: 12px 14px;
+      margin-bottom: 5px;
+
+      border-radius: 7px;
+
+      color: #e5e7eb;
+      text-decoration: none;
+
+      cursor: pointer;
+
+      transition: 0.2s;
+    }
+
+    .menu-item:hover {
+      background: #374151;
+    }
+
+    .menu-item.active {
+      background: #2563eb;
+      color: white;
+    }
+
+    .logout-menu {
+      margin-top: 25px;
+      background: #dc3545;
+    }
+
+    .logout-menu:hover {
+      background: #b91c1c;
+    }
+
+
+    /* =========================
+       主要內容
+       ========================= */
+
+    .main {
+      margin-left: 240px;
+
+      padding: 30px;
+
+      min-height: 100vh;
+    }
+
+    .top-bar {
+      display: flex;
+
+      justify-content: space-between;
+      align-items: center;
+
+      margin-bottom: 25px;
+    }
+
+    .page-title {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .user-info {
+      background: white;
+
+      padding: 10px 15px;
+
+      border-radius: 8px;
+
+      box-shadow:
+        0 2px 5px rgba(0,0,0,0.08);
+    }
+
+
+    /* =========================
+       卡片
+       ========================= */
+
+    .card {
+      background: white;
+
+      border-radius: 10px;
+
+      padding: 25px;
+
+      margin-bottom: 20px;
+
+      box-shadow:
+        0 2px 6px rgba(0,0,0,0.08);
+    }
+
+
+    /* =========================
+       教室分頁
+       ========================= */
+
+    .room-tabs {
+      display: grid;
+
+      grid-template-columns:
+        repeat(4, 1fr);
+
+      gap: 10px;
+
+      margin-bottom: 25px;
+    }
+
+    .room-tab {
+      border: 1px solid #d1d5db;
+
+      background: #f9fafb;
+
+      padding: 12px;
+
+      border-radius: 7px;
+
+      cursor: pointer;
+
+      font-size: 15px;
+
+      transition: 0.2s;
+    }
+
+    .room-tab:hover {
+      background: #e5e7eb;
+    }
+
+    .room-tab.active {
+      background: #2563eb;
+
+      color: white;
+
+      border-color: #2563eb;
+    }
+
+
+    /* =========================
+       教室標題
+       ========================= */
+
+    .room-header {
+      display: flex;
+
+      justify-content: space-between;
+      align-items: center;
+
+      margin-bottom: 20px;
+    }
+
+    .room-name {
+      font-size: 22px;
+
+      font-weight: bold;
+    }
+
+
+    /* =========================
+       按鈕
+       ========================= */
+
+    button {
+      border: none;
+
+      border-radius: 6px;
+
+      padding: 9px 15px;
+
+      cursor: pointer;
+
+      font-size: 14px;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn-warning {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #6b7280;
+      color: white;
+    }
+
+
+    /* =========================
+       課表
+       ========================= */
+
+    table {
+      width: 100%;
+
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid #e5e7eb;
+
+      padding: 12px;
+
+      text-align: center;
+    }
+
+    th {
+      background: #f3f4f6;
+    }
+
+    tr:hover {
+      background: #f9fafb;
+    }
+
+
+    /* =========================
+       管理區
+       ========================= */
+
+    .admin-panel {
+      background: #f8fafc;
+
+      border: 1px solid #e5e7eb;
+
+      border-radius: 8px;
+
+      padding: 18px;
+
+      margin-top: 20px;
+    }
+
+    .admin-buttons {
+      display: flex;
+
+      gap: 10px;
+
+      flex-wrap: wrap;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+
+    /* =========================
+       空資料
+       ========================= */
+
+    .empty {
+      text-align: center;
+
+      padding: 40px 20px;
+
+      color: #9ca3af;
+    }
+
+
+    /* =========================
+       響應式
+       ========================= */
+
+    @media (max-width: 900px) {
+
+      .sidebar {
+        width: 190px;
+      }
+
+      .main {
+        margin-left: 190px;
+      }
+
+      .room-tabs {
+        grid-template-columns:
+          repeat(2, 1fr);
+      }
+
+    }
+
   </style>
 </head>
+
+
 <body>
 
-  <div class="header-bar">
-    <h1>工廠機械手臂鑰匙格位管理系統</h1>
-    <button class="btn-danger" onclick="logout()" style="padding: 10px 18px;">登出系統</button>
-  </div>
 
-  <!-- CSV 批次匯入 -->
-  <div class="card">
-    <h3>批次設定 8 間教室與鑰匙 (CSV / Excel 匯入)</h3>
-    <div class="format-box">
-      <strong>CSV 欄位格式範例：</strong><br>
-      格位號碼(1-8), 對應教室名稱, 鑰匙名稱, 借用人(選填)<br>
-      <em>範例：1, 101 CNC加工教室, 101教室鑰匙, </em><br>
-      <em>範例：2, 102 氣壓教室, 102教室鑰匙, 李老師</em>
+  <!-- =================================
+       左側側欄
+       ================================= -->
+
+  <aside class="sidebar">
+
+    <div class="system-title">
+      🔐 鑰匙與冷氣卡<br>
+      倉儲管理系統
     </div>
-    <br>
-    <input type="file" id="csvFileInput" accept=".csv, .xlsx, .xls">
-    <button class="btn-primary" onclick="uploadCsv()">上傳更新格位設定</button>
-    <button class="btn-warning" onclick="resetAllSlots()">重置為預設設定</button>
-  </div>
 
-  <!-- 機械手臂 8 格位狀態表 -->
-  <div class="card">
-    <h2>機械手臂 8 個格位即時狀態 (點擊格位可操作借還與命名)</h2>
-    <div class="arm-grid" id="armGrid"></div>
-  </div>
 
-  <script>
-    let slotsData = {};
+    <div class="menu-title">
+      系統管理
+    </div>
 
-    async function loadSlots() {
-      const res = await fetch('/api/arm/slots');
-      const result = await res.json();
-      if (result.success) {
-        slotsData = result.data;
-        renderGrid();
-      }
-    }
 
-    function renderGrid() {
-      const grid = document.getElementById('armGrid');
-      grid.innerHTML = '';
+    <a class="menu-item">
+      🏠 系統首頁
+    </a>
 
-      for (let i = 1; i <= 8; i++) {
-        const slot = slotsData[i] || { slotId: i, roomName: `第 ${i} 教室`, keyName: `鑰匙 ${i}`, borrower: '' };
-        const isBorrowed = slot.borrower && slot.borrower.trim() !== '';
 
-        const box = document.createElement('div');
-        box.className = `slot-box ${isBorrowed ? 'borrowed' : 'in-stock'}`;
-        box.onclick = () => operateSlot(i, slot);
+    <a class="menu-item active">
+      📅 教室課表設置
+    </a>
 
-        box.innerHTML = `
-          <div class="slot-number">${i}</div>
-          <div style="font-weight: bold; font-size: 16px; color: #007bff; margin-top: 15px;">
-            ${slot.roomName}
-          </div>
-          <div style="font-size: 14px; font-weight: bold; margin: 8px 0; color: #333;">
-            ${slot.keyName}
-          </div>
-          <div>
-            ${isBorrowed ? `
-              <span class="badge badge-danger">已借出：${slot.borrower}</span>
-              <div style="font-size: 11px; color: #888; margin-top: 4px;">時間: ${slot.borrowTime || ''}</div>
-            ` : `
-              <span class="badge badge-success">鑰匙在位 (可借用)</span>
-            `}
-          </div>
-        `;
-        grid.appendChild(box);
-      }
-    }
 
-    async function operateSlot(id, slot) {
-      const choice = prompt(
-        `【格位 ${id} - ${slot.roomName}】\n` +
-        `請選擇要執行的操作：\n` +
-        `1: 登記借用 / 歸還鑰匙\n` +
-        `2: 修改教室名稱或鑰匙名稱`,
-        '1'
-      );
+    <a class="menu-item">
+      ❄️ 冷氣卡金額管理
+    </a>
 
-      if (choice === '1') {
-        const currentBorrower = slot.borrower || '';
-        const borrower = prompt(`登記借用人 (若要歸還鑰匙請將文字完全清空)：`, currentBorrower);
-        if (borrower === null) return;
 
-        const res = await fetch(`/api/arm/slot/${id}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ borrower })
-        });
-        const result = await res.json();
-        if (result.success) loadSlots();
+    <a class="menu-item">
+      👤 帳號管理
+    </a>
 
-      } else if (choice === '2') {
-        const roomName = prompt(`修改格位 ${id} 的教室名稱：`, slot.roomName);
-        if (roomName === null) return;
 
-        const keyName = prompt(`修改格位 ${id} 的鑰匙名稱：`, slot.keyName);
-        if (keyName === null) return;
+    <a class="menu-item">
+      🔑 臨時教室借還核准
+    </a>
 
-        const res = await fetch(`/api/arm/slot/${id}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ roomName, keyName })
-        });
-        const result = await res.json();
-        if (result.success) loadSlots();
-      }
-    }
 
-    async function uploadCsv() {
-      const fileInput = document.getElementById('csvFileInput');
-      if (!fileInput.files[0]) {
-        alert('請先選擇 CSV 或 Excel 檔案！');
+    <div class="menu-title">
+      系統監控
+    </div>
+
+
+    <a class="menu-item">
+      📡 連線監測
+    </a>
+
+
+    <a class="menu-item">
+      📋 網站日誌
+    </a>
+
+
+    <a class="menu-item logout-menu"
+       onclick="logout()">
+      🚪 登出系統
+    </a>
+
+  </aside>
+
+
+
+  <!-- =================================
+       主要內容
+       ================================= -->
+
+  <main class="main">
+
+
+    <div class="top-bar">
+
+      <h1 class="page-title">
+        教室課表設置
+      </h1>
+
+
+      <div class="user-info">
+
+        👤
+        <span id="username">
+          載入中...
+        </span>
+
+        ／
+
+        <span id="role">
+          載入中...
+        </span>
+
+      </div>
+
+    </div>
+
+
+
+    <!-- =================================
+         8 間教室
+         ================================= -->
+
+    <div class="card">
+
+      <h2>
+        八間教室
+      </h2>
+
+      <p>
+        請選擇要查看的教室。
+      </p>
+
+
+      <div
+        class="room-tabs"
+        id="roomTabs">
+      </div>
+
+
+      <div
+        class="room-header">
+
+        <div
+          class="room-name"
+          id="currentRoomName">
+          教室 1
+        </div>
+
+
+        <button
+          id="renameRoomButton"
+          class="btn-warning"
+          onclick="renameRoom()">
+
+          修改教室名稱
+
+        </button>
+
+      </div>
+
+
+      <!-- =================================
+           課表
+           ================================= -->
+
+      <div id="scheduleArea">
+
+        <div class="empty">
+          目前沒有課表資料
+        </div>
+
+      </div>
+
+
+
+      <!-- =================================
+           管理員操作區
+           ================================= -->
+
+      <div
+        id="adminPanel"
+        class="admin-panel hidden">
+
+        <h3>
+          管理員操作
+        </h3>
+
+
+        <div class="admin-buttons">
+
+          <button
+            class="btn-primary"
+            onclick="addSchedule()">
+
+            ＋ 新增課表
+
+          </button>
+
+
+          <button
+            class="btn-primary"
+            onclick="document.getElementById('csvFile').click()">
+
+            📁 匯入 CSV
+
+          </button>
+
+
+          <button
+            class="btn-secondary"
+            onclick="exportSchedule()">
+
+            📤 匯出課表
+
+          </button>
+
+
+          <input
+            type="file"
+            id="csvFile"
+            accept=".csv"
+            style="display:none"
+            onchange="importCSV(event)">
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+  </main>
+
+
+
+<script>
+
+  /* =====================================
+     系統資料
+     ===================================== */
+
+  let currentUser = null;
+
+  let currentRoom = 1;
+
+
+  /*
+   * 先建立八間教室
+   *
+   * 後續會由伺服器真正儲存。
+   */
+
+  let rooms = [];
+
+  for (let i = 1; i <= 8; i++) {
+
+    rooms.push({
+
+      id: i,
+
+      name: `教室 ${i}`,
+
+      schedules: []
+
+    });
+
+  }
+
+
+  /* =====================================
+     取得登入資訊
+     ===================================== */
+
+  async function loadUser() {
+
+    try {
+
+      const response =
+        await fetch('/api/me');
+
+      if (!response.ok) {
+
+        window.location.href =
+          '/index.html';
+
         return;
       }
 
-      const formData = new FormData();
-      formData.append('file', fileInput.files[0]);
 
-      const res = await fetch('/api/arm/upload-csv', {
-        method: 'POST',
-        body: formData
-      });
-      const result = await res.json();
-      alert(result.message);
-      if (result.success) {
-        fileInput.value = '';
-        loadSlots();
+      const result =
+        await response.json();
+
+
+      currentUser =
+        result.user;
+
+
+      document.getElementById(
+        'username'
+      ).textContent =
+        currentUser.username;
+
+
+      document.getElementById(
+        'role'
+      ).textContent =
+        currentUser.role === 'admin'
+          ? '管理員'
+          : '老師';
+
+
+      /*
+       * 只有管理員可以看到
+       * 管理功能。
+       */
+
+      if (
+        currentUser.role === 'admin'
+      ) {
+
+        document
+          .getElementById('adminPanel')
+          .classList.remove('hidden');
+
       }
+
+      else {
+
+        document
+          .getElementById(
+            'renameRoomButton'
+          )
+          .classList.add('hidden');
+
+      }
+
+
+      renderRoomTabs();
+
+      renderRoom();
+
+
+    } catch (error) {
+
+      console.error(error);
+
+      alert(
+        '無法取得登入資訊'
+      );
+
     }
 
-    async function resetAllSlots() {
-      if (!confirm('確定要將 8 個格位全部重置嗎？')) return;
-      const res = await fetch('/api/arm/reset-all', { method: 'POST' });
-      const result = await res.json();
-      alert(result.message);
-      if (result.success) loadSlots();
+  }
+
+
+  /* =====================================
+     建立八間教室按鈕
+     ===================================== */
+
+  function renderRoomTabs() {
+
+    const tabs =
+      document.getElementById(
+        'roomTabs'
+      );
+
+
+    tabs.innerHTML = '';
+
+
+    rooms.forEach(room => {
+
+      const button =
+        document.createElement('button');
+
+
+      button.className =
+        'room-tab';
+
+
+      if (
+        room.id === currentRoom
+      ) {
+
+        button.classList.add(
+          'active'
+        );
+
+      }
+
+
+      button.textContent =
+        room.name;
+
+
+      button.onclick =
+        () => {
+
+          currentRoom =
+            room.id;
+
+          renderRoomTabs();
+
+          renderRoom();
+
+        };
+
+
+      tabs.appendChild(button);
+
+    });
+
+  }
+
+
+  /* =====================================
+     顯示目前教室
+     ===================================== */
+
+  function renderRoom() {
+
+    const room =
+      rooms.find(
+        r => r.id === currentRoom
+      );
+
+
+    if (!room) return;
+
+
+    document.getElementById(
+      'currentRoomName'
+    ).textContent =
+      room.name;
+
+
+    const area =
+      document.getElementById(
+        'scheduleArea'
+      );
+
+
+    /*
+     * 沒有課表
+     */
+
+    if (
+      room.schedules.length === 0
+    ) {
+
+      area.innerHTML = `
+
+        <div class="empty">
+
+          目前「${room.name}」
+          尚未建立課表資料。
+
+        </div>
+
+      `;
+
+      return;
+
     }
 
-    async function logout() {
-      if (!confirm('確定要登出嗎？')) return;
-      const res = await fetch('/api/logout', { method: 'POST' });
-      const result = await res.json();
-      if (result.success) window.location.href = '/index.html';
+
+    /*
+     * 有課表
+     */
+
+    let html = `
+
+      <table>
+
+        <thead>
+
+          <tr>
+
+            <th>教師編號</th>
+            <th>星期</th>
+            <th>借用時間</th>
+            <th>歸還時間</th>
+            <th>操作</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+    `;
+
+
+    room.schedules.forEach(
+      (schedule, index) => {
+
+        html += `
+
+          <tr>
+
+            <td>
+              ${schedule.teacherId}
+            </td>
+
+            <td>
+              ${schedule.weekday}
+            </td>
+
+            <td>
+              ${schedule.borrowTime}
+            </td>
+
+            <td>
+              ${schedule.returnTime}
+            </td>
+
+            <td>
+
+              ${
+                currentUser &&
+                currentUser.role === 'admin'
+                ?
+
+                `<button
+                   class="btn-danger"
+                   onclick="deleteSchedule(${index})">
+                   刪除
+                 </button>`
+
+                :
+
+                `—`
+
+              }
+
+            </td>
+
+          </tr>
+
+        `;
+
+      }
+    );
+
+
+    html += `
+
+        </tbody>
+
+      </table>
+
+    `;
+
+
+    area.innerHTML =
+      html;
+
+  }
+
+
+  /* =====================================
+     修改教室名稱
+     ===================================== */
+
+  function renameRoom() {
+
+    if (
+      !currentUser ||
+      currentUser.role !== 'admin'
+    ) {
+
+      return;
+
     }
 
-    loadSlots();
-  </script>
+
+    const room =
+      rooms.find(
+        r => r.id === currentRoom
+      );
+
+
+    const newName =
+      prompt(
+        '請輸入新的教室名稱：',
+        room.name
+      );
+
+
+    if (
+      newName === null
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      newName.trim() === ''
+    ) {
+
+      alert(
+        '教室名稱不能為空白。'
+      );
+
+      return;
+
+    }
+
+
+    room.name =
+      newName.trim();
+
+
+    renderRoomTabs();
+
+    renderRoom();
+
+  }
+
+
+  /* =====================================
+     新增課表
+     ===================================== */
+
+  function addSchedule() {
+
+    if (
+      !currentUser ||
+      currentUser.role !== 'admin'
+    ) {
+
+      return;
+
+    }
+
+
+    const teacherId =
+      prompt(
+        '請輸入教師編號（1～8）：'
+      );
+
+
+    if (
+      teacherId === null
+    ) return;
+
+
+    const weekday =
+      prompt(
+        '請輸入星期（例如：星期一）：'
+      );
+
+
+    if (
+      weekday === null
+    ) return;
+
+
+    const borrowTime =
+      prompt(
+        '請輸入借用時間（例如：08:00）：'
+      );
+
+
+    if (
+      borrowTime === null
+    ) return;
+
+
+    const returnTime =
+      prompt(
+        '請輸入歸還時間（例如：10:00）：'
+      );
+
+
+    if (
+      returnTime === null
+    ) return;
+
+
+    const room =
+      rooms.find(
+        r => r.id === currentRoom
+      );
+
+
+    room.schedules.push({
+
+      teacherId:
+        teacherId.trim(),
+
+      weekday:
+        weekday.trim(),
+
+      borrowTime:
+        borrowTime.trim(),
+
+      returnTime:
+        returnTime.trim()
+
+    });
+
+
+    renderRoom();
+
+  }
+
+
+  /* =====================================
+     刪除課表
+     ===================================== */
+
+  function deleteSchedule(index) {
+
+    if (
+      !currentUser ||
+      currentUser.role !== 'admin'
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      !confirm(
+        '確定要刪除這筆課表嗎？'
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    const room =
+      rooms.find(
+        r => r.id === currentRoom
+      );
+
+
+    room.schedules.splice(
+      index,
+      1
+    );
+
+
+    renderRoom();
+
+  }
+
+
+  /* =====================================
+     CSV 匯入
+     ===================================== */
+
+  function importCSV(event) {
+
+    if (
+      !currentUser ||
+      currentUser.role !== 'admin'
+    ) {
+
+      return;
+
+    }
+
+
+    const file =
+      event.target.files[0];
+
+
+    if (!file) return;
+
+
+    alert(
+      'CSV 已選取。下一階段會將 CSV 正式寫入伺服器資料庫。'
+    );
+
+
+    /*
+     * 目前先不直接寫入。
+     *
+     * 下一階段會接：
+     *
+     * CSV
+     * ↓
+     * Server
+     * ↓
+     * 課表資料
+     *
+     * CSV 格式：
+     *
+     * 教師編號,教室,星期幾,借用時間,歸還時間
+     */
+
+    event.target.value = '';
+
+  }
+
+
+  /* =====================================
+     匯出課表
+     * ===================================== */
+
+  function exportSchedule() {
+
+    alert(
+      '課表匯出功能下一階段接上伺服器。'
+    );
+
+  }
+
+
+  /* =====================================
+     登出
+     * ===================================== */
+
+  async function logout() {
+
+    if (
+      !confirm(
+        '確定要登出系統嗎？'
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    try {
+
+      await fetch(
+        '/api/logout',
+        {
+          method: 'POST'
+        }
+      );
+
+
+      window.location.href =
+        '/index.html';
+
+
+    } catch (error) {
+
+      alert(
+        '登出失敗，請稍後再試。'
+      );
+
+    }
+
+  }
+
+
+  /* =====================================
+     啟動
+     * ===================================== */
+
+  loadUser();
+
+</script>
+
+
 </body>
+
 </html>
