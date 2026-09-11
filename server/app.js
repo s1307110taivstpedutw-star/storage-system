@@ -5,6 +5,7 @@ const path = require("path");
 const auth = require("./routes/auth");
 const classroomsRouter = require("./routes/classrooms");
 const armRouter = require("./routes/arm");
+const temporaryRouter = require("./routes/temporary");
 
 const app = express();
 
@@ -47,8 +48,11 @@ app.use("/api", auth.router);
 // 教室課表
 app.use("/api", classroomsRouter);
 
-// 機械手臂格位
+// 機械手臂
 app.use("/api", armRouter);
+
+// 臨時教室借還核准
+app.use("/api", temporaryRouter);
 
 // ================================
 // 匯出 App
