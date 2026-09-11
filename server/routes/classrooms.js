@@ -101,14 +101,7 @@ router.post("/classrooms/:id", (req, res) => {
     classroom.name = name.trim();
 
 
-    // --------------------------------------------------------
     // 同步機械手臂格位名稱
-    // 教室 1 ↔ 第 1 格
-    // 教室 2 ↔ 第 2 格
-    // ...
-    // 教室 8 ↔ 第 8 格
-    // --------------------------------------------------------
-
     const slot = data.armSlots.find(
       item => item.slotId === classroomId
     );
@@ -165,10 +158,6 @@ router.post("/classrooms/:id/schedules", (req, res) => {
     }
 
 
-    // --------------------------------------------------------
-    // 檢查資料
-    // --------------------------------------------------------
-
     if (
       !className ||
       !dayOfWeek ||
@@ -182,10 +171,6 @@ router.post("/classrooms/:id/schedules", (req, res) => {
     }
 
 
-    // --------------------------------------------------------
-    // 檢查時間
-    // --------------------------------------------------------
-
     if (startTime >= endTime) {
       return res.status(400).json({
         success: false,
@@ -193,10 +178,6 @@ router.post("/classrooms/:id/schedules", (req, res) => {
       });
     }
 
-
-    // --------------------------------------------------------
-    // 建立課表
-    // --------------------------------------------------------
 
     const schedule = {
       id: Date.now(),
@@ -231,6 +212,68 @@ router.post("/classrooms/:id/schedules", (req, res) => {
     });
   }
 });
+
+
+// ============================================================
+// 刪除課表
+// DELETE /api/classrooms/:classroomId/schedules/:scheduleId
+// ============================================================
+
+router.delete(
+  "/classrooms/:classroomId/schedules/:scheduleId",
+  (req, res) => {
+    try {
+      const classroomId = Number(req.params.classroomId);
+      const scheduleId = Number(req.params.scheduleId);
+
+      const data = loadData();
+
+      const classroom = data.classrooms[classroomId];
+
+      if (!classroom) {
+        return res.status(404).json({
+          success: false,
+          message: "找不到這間教室"
+        });
+      }
+
+
+      const scheduleIndex = classroom.schedules.findIndex(
+        schedule => Number(schedule.id) === scheduleId
+      );
+
+
+      if (scheduleIndex === -1) {
+        return res.status(404).json({
+          success: false,
+          message: "找不到這筆課表"
+        });
+      }
+
+
+      const deletedSchedule =
+        classroom.schedules.splice(scheduleIndex, 1)[0];
+
+
+      saveData(data);
+
+
+      res.json({
+        success: true,
+        message: "課表刪除成功",
+        schedule: deletedSchedule
+      });
+
+    } catch (error) {
+      console.error("刪除課表錯誤：", error);
+
+      res.status(500).json({
+        success: false,
+        message: "課表刪除失敗"
+      });
+    }
+  }
+);
 
 
 // ============================================================
