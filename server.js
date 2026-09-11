@@ -92,7 +92,7 @@ for (let i = 1; i <= 8; i++) {
     id: i,
 
     name:
-      `教室 ${i}`,
+      "教室 " + (i + 1)
 
     schedules: []
 
@@ -192,7 +192,7 @@ function normalizeData() {
         slotId: i,
 
         roomName:
-          `教室 ${i}`,
+          "教室 " + i,
 
         keyName: "",
 
@@ -284,7 +284,7 @@ function normalizeData() {
         id: i,
 
         name:
-          `教室 ${i}`,
+          "教室 " + i
 
         schedules: []
 
