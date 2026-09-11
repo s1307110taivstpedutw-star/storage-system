@@ -1,4 +1,3 @@
-```javascript
 const express = require("express");
 const session = require("express-session");
 const multer = require("multer");
@@ -61,7 +60,7 @@ const defaultArmSlots =
       slotId: i + 1,
 
       roomName:
-        `教室 ${i + 1}`,
+        "教室 " + (i + 1),
 
       keyName: "",
 
@@ -69,10 +68,17 @@ const defaultArmSlots =
 
       borrowTime: "",
 
-      // 新版狀態：
-      // 未借出
-      // 已核准／待執行
-      // 已借出
+      /*
+        狀態：
+
+        未借出
+        已核准／待執行
+        已借出
+
+        注意：
+        「已借出」必須等 ESP32 實際回報
+      */
+
       status: "未借出",
 
       bookingId: null
@@ -92,11 +98,12 @@ for (let i = 1; i <= 8; i++) {
     id: i,
 
     name:
-      "教室 " + (i + 1)
+      "教室 " + i,
 
     schedules: []
 
   };
+
 }
 
 // ======================================================
@@ -122,7 +129,9 @@ const defaultData = {
 
 let systemData =
   JSON.parse(
-    JSON.stringify(defaultData)
+    JSON.stringify(
+      defaultData
+    )
   );
 
 // ======================================================
@@ -240,10 +249,7 @@ function normalizeData() {
           舊版「借用中」不能直接視為
           真正的「已借出」。
 
-          因為現在「已借出」必須由
-          ESP32 實際回報。
-
-          因此舊資料先回到未借出。
+          目前必須等待 ESP32 實際回報。
         */
 
         slot.status =
@@ -284,7 +290,7 @@ function normalizeData() {
         id: i,
 
         name:
-          "教室 " + i
+          "教室 " + i,
 
         schedules: []
 
@@ -400,10 +406,6 @@ function loadData() {
 
   normalizeData();
 
-  /*
-    將舊資料整理後保存一次，
-    確保 data.json 也跟著更新。
-  */
   saveData();
 
 }
@@ -1258,7 +1260,9 @@ app.post(
         success: true,
 
         message:
-          `CSV 匯入完成，共匯入 ${imported} 筆資料`,
+          "CSV 匯入完成，共匯入 " +
+          imported +
+          " 筆資料",
 
         imported
 
@@ -2021,8 +2025,10 @@ app.post(
           "待審核",
 
         /*
-          ★ 申請時不分配機械手臂格位 ★
+          申請時不分配機械手臂格位。
+          管理員核准時自動對應。
         */
+
         slotId:
           null,
 
@@ -2104,8 +2110,8 @@ app.post(
         Number(req.params.id);
 
       /*
-        ★ 不再從 req.body 取得 slotId ★
-        
+        ★ 不從 req.body 取得 slotId ★
+
         格位完全由 classroomId 自動決定。
 
         教室 1 → 第 1 格
@@ -2207,15 +2213,23 @@ app.post(
       }
 
       // ==================================================
-      // 檢查格位是否已被其他核准申請使用
+      // 檢查格位
       // ==================================================
 
+      /*
+        未借出 → 可以使用
+
+        已核准／待執行 → 不可使用
+
+        已借出 → 不可使用
+
+        舊版「空閒」也視為可以使用
+      */
+
       if (
-        slot.status !==
-          "未借出" &&
-        Number(
-          slot.bookingId
-        ) !== id
+        slot.status !== "未借出" &&
+        slot.status !== "空閒" &&
+        Number(slot.bookingId) !== id
       ) {
 
         return res.status(409)
@@ -2224,7 +2238,9 @@ app.post(
             success: false,
 
             message:
-              `機械手臂第 ${selectedSlot} 格目前無法使用`
+              "機械手臂第 " +
+              selectedSlot +
+              " 格目前無法使用"
 
           });
 
@@ -2251,15 +2267,11 @@ app.post(
       // ==================================================
 
       /*
-        ★ 重點 ★
+        ★ 不設定成「已借出」
 
-        這裡不能直接設定：
+        因為目前 ESP32 尚未實際回報。
 
-        已借出
-
-        因為目前還沒有 ESP32 的實際回報。
-
-        所以先設定：
+        所以：
 
         已核准／待執行
       */
@@ -2274,7 +2286,11 @@ app.post(
         booking.applicantName;
 
       slot.borrowTime =
-        `${booking.date} ${booking.startTime}~${booking.endTime}`;
+        booking.date +
+        " " +
+        booking.startTime +
+        "~" +
+        booking.endTime;
 
       slot.roomName =
         booking.classroomName;
@@ -2282,7 +2298,13 @@ app.post(
       saveData();
 
       console.log(
-        `申請 ${id} 已核准，教室 ${booking.classroomId} 自動對應機械手臂第 ${selectedSlot} 格，等待 ESP32 執行`
+        "申請 " +
+        id +
+        " 已核准，教室 " +
+        booking.classroomId +
+        " 自動對應機械手臂第 " +
+        selectedSlot +
+        " 格，等待 ESP32 執行"
       );
 
       res.json({
@@ -2290,7 +2312,11 @@ app.post(
         success: true,
 
         message:
-          `申請已核准，教室 ${booking.classroomId} 已自動對應機械手臂第 ${selectedSlot} 格，等待 ESP32 執行`,
+          "申請已核准，教室 " +
+          booking.classroomId +
+          " 已自動對應機械手臂第 " +
+          selectedSlot +
+          " 格，等待 ESP32 執行",
 
         booking,
 
@@ -2573,9 +2599,9 @@ app.post(
 
   網站才會顯示：
 
-  🔴 已借出
+  已借出
 
-  如果 ESP32 回報：
+  ESP32 回報：
 
   {
     "status": "未借出"
@@ -2583,7 +2609,7 @@ app.post(
 
   網站顯示：
 
-  🟢 未借出
+  未借出
 */
 
 app.post(
@@ -2640,14 +2666,6 @@ app.post(
       slot.status =
         status;
 
-      /*
-        ESP32 回報未借出時，
-        清除目前格位的實際借出資訊。
-
-        bookingId 保留與否，
-        後續可以再依照完整機械手臂流程調整。
-      */
-
       if (
         status === "未借出"
       ) {
@@ -2663,7 +2681,10 @@ app.post(
       saveData();
 
       console.log(
-        `ESP32 回報：第 ${id} 格 → ${status}`
+        "ESP32 回報：第 " +
+        id +
+        " 格 → " +
+        status
       );
 
       res.json({
@@ -2671,7 +2692,10 @@ app.post(
         success: true,
 
         message:
-          `第 ${id} 格狀態已更新為 ${status}`,
+          "第 " +
+          id +
+          " 格狀態已更新為 " +
+          status,
 
         slot
 
@@ -2813,13 +2837,14 @@ app.listen(
   () => {
 
     console.log(
-      `Storage System server running on port ${PORT}`
+      "Storage System server running on port " +
+      PORT
     );
 
     console.log(
-      `http://localhost:${PORT}`
+      "http://localhost:" +
+      PORT
     );
 
   }
 );
-```
