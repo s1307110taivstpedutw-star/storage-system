@@ -1,0 +1,1031 @@
+```html
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>冷氣卡金額管理</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
+            background: #f4f6f8;
+            color: #222;
+        }
+
+        /* =========================
+           側邊欄
+        ========================= */
+
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 240px;
+            height: 100vh;
+            background: #1f2937;
+            color: white;
+            padding: 20px 12px;
+            overflow-y: auto;
+        }
+
+        .sidebar-title {
+            font-size: 22px;
+            font-weight: bold;
+            padding: 10px 12px 24px;
+            text-align: center;
+        }
+
+        .menu-item {
+            display: block;
+            width: 100%;
+            padding: 14px 15px;
+            margin-bottom: 6px;
+            border-radius: 8px;
+            color: #e5e7eb;
+            text-decoration: none;
+            font-size: 16px;
+            transition: 0.2s;
+        }
+
+        .menu-item:hover {
+            background: #374151;
+        }
+
+        .menu-item.active {
+            background: #2563eb;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* =========================
+           主畫面
+        ========================= */
+
+        .main {
+            margin-left: 240px;
+            padding: 30px;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 24px 28px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .header h1 {
+            margin: 0 0 8px;
+            font-size: 28px;
+        }
+
+        .header p {
+            margin: 0;
+            color: #6b7280;
+        }
+
+        /* =========================
+           狀態統計
+        ========================= */
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .summary-title {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .summary-number {
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+        /* =========================
+           工具列
+        ========================= */
+
+        .toolbar {
+            background: white;
+            padding: 18px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .toolbar-left {
+            color: #555;
+        }
+
+        button {
+            border: none;
+            border-radius: 7px;
+            padding: 10px 16px;
+            font-size: 15px;
+            cursor: pointer;
+            background: #2563eb;
+            color: white;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+        }
+
+        /* =========================
+           卡片列表
+        ========================= */
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 18px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 22px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border-left: 5px solid #2563eb;
+        }
+
+        .card.low-balance {
+            border-left-color: #dc2626;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .room-name {
+            font-size: 21px;
+            font-weight: bold;
+        }
+
+        .slot-number {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        /* =========================
+           金額
+        ========================= */
+
+        .balance-area {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 18px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .balance-label {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 6px;
+        }
+
+        .balance {
+            font-size: 36px;
+            font-weight: bold;
+        }
+
+        .balance.low {
+            color: #dc2626;
+        }
+
+        .warning {
+            display: none;
+            margin-top: 8px;
+            color: #dc2626;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .warning.show {
+            display: block;
+        }
+
+        /* =========================
+           資料欄位
+        ========================= */
+
+        .info-row {
+            margin-bottom: 12px;
+        }
+
+        .info-label {
+            display: block;
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 5px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 18px;
+        }
+
+        .card-actions button {
+            flex: 1;
+        }
+
+        /* =========================
+           載入 / 錯誤
+        ========================= */
+
+        .loading {
+            background: white;
+            padding: 40px;
+            text-align: center;
+            border-radius: 12px;
+            color: #6b7280;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        /* =========================
+           手機版
+        ========================= */
+
+        @media (max-width: 900px) {
+            .sidebar {
+                width: 200px;
+            }
+
+            .main {
+                margin-left: 200px;
+                padding: 20px;
+            }
+
+            .cards {
+                grid-template-columns: 1fr;
+            }
+
+            .summary {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 650px) {
+            .sidebar {
+                position: relative;
+                width: 100%;
+                height: auto;
+            }
+
+            .main {
+                margin-left: 0;
+            }
+
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- =========================
+         側邊欄
+    ========================= -->
+
+    <aside class="sidebar">
+
+        <div class="sidebar-title">
+            🔐 倉儲管理系統
+        </div>
+
+        <a class="menu-item" href="index.html">
+            🏠 系統首頁
+        </a>
+
+        <a class="menu-item" href="schedule.html">
+            📅 教室課表設置
+        </a>
+
+        <a class="menu-item active" href="ac-card.html">
+            ❄️ 冷氣卡金額管理
+        </a>
+
+        <a class="menu-item" href="accounts.html">
+            👤 帳號管理
+        </a>
+
+        <a class="menu-item" href="temporary.html">
+            🔑 臨時教室借還核准
+        </a>
+
+        <a class="menu-item" href="monitoring.html">
+            📡 連線監測
+        </a>
+
+        <a class="menu-item" href="logs.html">
+            📋 網站日誌
+        </a>
+
+        <a class="menu-item" href="#" onclick="logout(); return false;">
+            🚪 登出系統
+        </a>
+
+    </aside>
+
+
+    <!-- =========================
+         主畫面
+    ========================= -->
+
+    <main class="main">
+
+        <section class="header">
+            <h1>❄️ 冷氣卡金額管理</h1>
+            <p>
+                管理 8 個機械手臂格位的冷氣卡 NFC 與剩餘金額
+            </p>
+        </section>
+
+
+        <!-- 錯誤訊息 -->
+
+        <div id="errorMessage" class="error"></div>
+
+
+        <!-- =========================
+             統計
+        ========================= -->
+
+        <section class="summary">
+
+            <div class="summary-card">
+                <div class="summary-title">
+                    冷氣卡總數
+                </div>
+
+                <div class="summary-number" id="totalCards">
+                    0
+                </div>
+            </div>
+
+
+            <div class="summary-card">
+                <div class="summary-title">
+                    正常金額
+                </div>
+
+                <div class="summary-number" id="normalCards">
+                    0
+                </div>
+            </div>
+
+
+            <div class="summary-card">
+                <div class="summary-title">
+                    低於 NT$300
+                </div>
+
+                <div class="summary-number" id="lowCards">
+                    0
+                </div>
+            </div>
+
+        </section>
+
+
+        <!-- =========================
+             工具列
+        ========================= -->
+
+        <section class="toolbar">
+
+            <div class="toolbar-left">
+                最低警戒金額：
+                <strong>NT$300</strong>
+            </div>
+
+            <button onclick="loadCards()">
+                🔄 重新整理
+            </button>
+
+        </section>
+
+
+        <!-- =========================
+             卡片
+        ========================= -->
+
+        <section id="cards" class="cards">
+
+            <div class="loading">
+                正在載入冷氣卡資料……
+            </div>
+
+        </section>
+
+    </main>
+
+
+<script>
+
+    /*
+     * ==========================================
+     * 全域資料
+     * ==========================================
+     */
+
+    let cardData = [];
+
+
+    /*
+     * ==========================================
+     * 初始化
+     * ==========================================
+     */
+
+    document.addEventListener("DOMContentLoaded", function () {
+        loadCards();
+    });
+
+
+    /*
+     * ==========================================
+     * 取得冷氣卡資料
+     * GET /api/ac-card
+     * ==========================================
+     */
+
+    async function loadCards() {
+
+        hideError();
+
+        const container = document.getElementById("cards");
+
+        container.innerHTML = `
+            <div class="loading">
+                正在載入冷氣卡資料……
+            </div>
+        `;
+
+        try {
+
+            const response = await fetch("/api/ac-card", {
+                method: "GET",
+                credentials: "include"
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(
+                    result.message || "無法取得冷氣卡資料"
+                );
+            }
+
+            cardData = Array.isArray(result.cards)
+                ? result.cards
+                : [];
+
+            renderCards();
+            updateSummary();
+
+        } catch (error) {
+
+            console.error(error);
+
+            showError(
+                "冷氣卡資料載入失敗：" +
+                error.message
+            );
+
+            container.innerHTML = `
+                <div class="loading">
+                    無法載入資料
+                </div>
+            `;
+        }
+    }
+
+
+    /*
+     * ==========================================
+     * 顯示卡片
+     * ==========================================
+     */
+
+    function renderCards() {
+
+        const container =
+            document.getElementById("cards");
+
+        if (cardData.length === 0) {
+
+            container.innerHTML = `
+                <div class="loading">
+                    目前沒有冷氣卡資料
+                </div>
+            `;
+
+            return;
+        }
+
+
+        container.innerHTML = cardData.map(card => {
+
+            const balance =
+                Number(card.acCardBalance) || 0;
+
+            const lowBalance =
+                balance < 300;
+
+            return `
+                <article class="card ${lowBalance ? "low-balance" : ""}">
+
+                    <div class="card-header">
+
+                        <div>
+                            <div class="room-name">
+                                ${escapeHtml(card.roomName || "未命名教室")}
+                            </div>
+
+                            <div class="slot-number">
+                                機械手臂格位 ${card.slotId}
+                            </div>
+                        </div>
+
+                    </div>
+
+
+                    <div class="balance-area">
+
+                        <div class="balance-label">
+                            冷氣卡剩餘金額
+                        </div>
+
+                        <div
+                            id="balance-${card.slotId}"
+                            class="balance ${lowBalance ? "low" : ""}"
+                        >
+                            NT$ ${balance.toLocaleString()}
+                        </div>
+
+                        <div
+                            class="warning ${lowBalance ? "show" : ""}"
+                        >
+                            ⚠️ 金額低於 NT$300
+                        </div>
+
+                    </div>
+
+
+                    <div class="info-row">
+
+                        <label class="info-label">
+                            冷氣卡 NFC ID
+                        </label>
+
+                        <input
+                            id="nfc-${card.slotId}"
+                            type="text"
+                            value="${escapeHtml(card.acCardNfcId || "")}"
+                            placeholder="尚未設定"
+                        >
+
+                    </div>
+
+
+                    <div class="info-row">
+
+                        <label class="info-label">
+                            剩餘金額
+                        </label>
+
+                        <input
+                            id="amount-${card.slotId}"
+                            type="number"
+                            min="0"
+                            step="1"
+                            value="${balance}"
+                        >
+
+                    </div>
+
+
+                    <div class="card-actions">
+
+                        <button
+                            onclick="saveCard(${card.slotId})"
+                        >
+                            💾 儲存
+                        </button>
+
+                        <button
+                            class="btn-secondary"
+                            onclick="refreshOneCard(${card.slotId})"
+                        >
+                            🔄 更新
+                        </button>
+
+                    </div>
+
+                </article>
+            `;
+
+        }).join("");
+    }
+
+
+    /*
+     * ==========================================
+     * 儲存冷氣卡
+     *
+     * POST /api/ac-card/:slotId
+     * ==========================================
+     */
+
+    async function saveCard(slotId) {
+
+        hideError();
+
+        const nfcInput =
+            document.getElementById(`nfc-${slotId}`);
+
+        const amountInput =
+            document.getElementById(`amount-${slotId}`);
+
+        if (!nfcInput || !amountInput) {
+            showError("找不到冷氣卡資料欄位");
+            return;
+        }
+
+
+        const acCardNfcId =
+            nfcInput.value.trim();
+
+        const acCardBalance =
+            Number(amountInput.value);
+
+
+        if (!Number.isFinite(acCardBalance) ||
+            acCardBalance < 0) {
+
+            showError(
+                "冷氣卡金額必須是 0 或以上的數字"
+            );
+
+            return;
+        }
+
+
+        try {
+
+            const response = await fetch(
+                `/api/ac-card/${slotId}`,
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    credentials: "include",
+
+                    body: JSON.stringify({
+                        acCardNfcId,
+                        acCardBalance
+                    })
+                }
+            );
+
+
+            const result =
+                await response.json();
+
+
+            if (!response.ok || !result.success) {
+
+                throw new Error(
+                    result.message ||
+                    "儲存失敗"
+                );
+            }
+
+
+            alert("冷氣卡資料已儲存");
+
+            await loadCards();
+
+        } catch (error) {
+
+            console.error(error);
+
+            showError(
+                "儲存失敗：" +
+                error.message
+            );
+        }
+    }
+
+
+    /*
+     * ==========================================
+     * 更新單張卡片
+     * ==========================================
+     */
+
+    async function refreshOneCard(slotId) {
+
+        hideError();
+
+        try {
+
+            const response =
+                await fetch(
+                    `/api/ac-card/${slotId}`,
+                    {
+                        method: "GET",
+                        credentials: "include"
+                    }
+                );
+
+
+            const result =
+                await response.json();
+
+
+            if (!response.ok || !result.success) {
+
+                throw new Error(
+                    result.message ||
+                    "取得資料失敗"
+                );
+            }
+
+
+            const card =
+                result.card;
+
+
+            const nfcInput =
+                document.getElementById(
+                    `nfc-${slotId}`
+                );
+
+            const amountInput =
+                document.getElementById(
+                    `amount-${slotId}`
+                );
+
+
+            if (nfcInput) {
+                nfcInput.value =
+                    card.acCardNfcId || "";
+            }
+
+
+            if (amountInput) {
+                amountInput.value =
+                    Number(card.acCardBalance) || 0;
+            }
+
+
+            updateCardBalanceDisplay(
+                slotId,
+                Number(card.acCardBalance) || 0
+            );
+
+        } catch (error) {
+
+            console.error(error);
+
+            showError(
+                "更新失敗：" +
+                error.message
+            );
+        }
+    }
+
+
+    /*
+     * ==========================================
+     * 更新金額顯示
+     * ==========================================
+     */
+
+    function updateCardBalanceDisplay(
+        slotId,
+        balance
+    ) {
+
+        const balanceElement =
+            document.getElementById(
+                `balance-${slotId}`
+            );
+
+        if (!balanceElement) {
+            return;
+        }
+
+
+        balanceElement.textContent =
+            "NT$ " +
+            Number(balance).toLocaleString();
+
+
+        if (balance < 300) {
+
+            balanceElement.classList.add("low");
+
+        } else {
+
+            balanceElement.classList.remove("low");
+
+        }
+    }
+
+
+    /*
+     * ==========================================
+     * 統計數字
+     * ==========================================
+     */
+
+    function updateSummary() {
+
+        const total =
+            cardData.length;
+
+
+        const low =
+            cardData.filter(card => {
+
+                const balance =
+                    Number(card.acCardBalance) || 0;
+
+                return balance < 300;
+
+            }).length;
+
+
+        const normal =
+            total - low;
+
+
+        document.getElementById(
+            "totalCards"
+        ).textContent = total;
+
+
+        document.getElementById(
+            "normalCards"
+        ).textContent = normal;
+
+
+        document.getElementById(
+            "lowCards"
+        ).textContent = low;
+    }
+
+
+    /*
+     * ==========================================
+     * 登出
+     * ==========================================
+     */
+
+    async function logout() {
+
+        try {
+
+            await fetch(
+                "/api/logout",
+                {
+                    method: "POST",
+                    credentials: "include"
+                }
+            );
+
+        } catch (error) {
+
+            console.error(error);
+
+        }
+
+
+        window.location.href =
+            "index.html";
+    }
+
+
+    /*
+     * ==========================================
+     * HTML 防注入
+     * ==========================================
+     */
+
+    function escapeHtml(value) {
+
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+
+    /*
+     * ==========================================
+     * 錯誤訊息
+     * ==========================================
+     */
+
+    function showError(message) {
+
+        const element =
+            document.getElementById(
+                "errorMessage"
+            );
+
+        element.textContent =
+            message;
+
+        element.classList.add("show");
+    }
+
+
+    function hideError() {
+
+        const element =
+            document.getElementById(
+                "errorMessage"
+            );
+
+        element.textContent = "";
+
+        element.classList.remove("show");
+    }
+
+</script>
+
+</body>
+</html>
+```
