@@ -3,11 +3,6 @@
 // server.js
 // ==========================================
 
-
-// ==========================================
-// 1. 載入需要的套件
-// ==========================================
-
 const express = require('express');
 const session = require('express-session');
 const multer = require('multer');
@@ -17,14 +12,14 @@ const fs = require('fs');
 
 
 // ==========================================
-// 2. 建立 Express 伺服器
+// 1. 建立 Express
 // ==========================================
 
 const app = express();
 
 
 // ==========================================
-// 3. 檔案上傳設定
+// 2. 檔案上傳
 // ==========================================
 
 const upload = multer({
@@ -33,7 +28,7 @@ const upload = multer({
 
 
 // ==========================================
-// 4. Express 資料格式
+// 3. 接收資料
 // ==========================================
 
 app.use(express.json());
@@ -44,7 +39,7 @@ app.use(express.urlencoded({
 
 
 // ==========================================
-// 5. 前端 public 資料夾
+// 4. 前端資料夾
 // ==========================================
 
 app.use(express.static(
@@ -53,13 +48,14 @@ app.use(express.static(
 
 
 // ==========================================
-// 6. Session 登入系統
+// 5. Session
 // ==========================================
 
 app.use(session({
 
-  // 正式上線之後可以改成 Render 環境變數
-  secret: process.env.SESSION_SECRET || 'arm_key_secret_123',
+  secret:
+    process.env.SESSION_SECRET ||
+    'arm_key_secret_123',
 
   resave: false,
 
@@ -73,17 +69,15 @@ app.use(session({
 
 
 // ==========================================
-// 7. 資料檔案
+// 6. 資料檔案
 // ==========================================
 
-const DATA_FILE = path.join(
-  __dirname,
-  'data.json'
-);
+const DATA_FILE =
+  path.join(__dirname, 'data.json');
 
 
 // ==========================================
-// 8. 建立預設機械手臂 8 格
+// 7. 預設機械手臂 8 格
 // ==========================================
 
 function getDefaultArmSlots() {
@@ -103,6 +97,7 @@ function getDefaultArmSlots() {
       borrower: '',
 
       borrowTime: ''
+
     };
 
   }
@@ -112,7 +107,7 @@ function getDefaultArmSlots() {
 
 
 // ==========================================
-// 9. 建立預設 8 個教室
+// 8. 預設 8 個教室
 // ==========================================
 
 function getDefaultClassrooms() {
@@ -138,16 +133,18 @@ function getDefaultClassrooms() {
 
 
 // ==========================================
-// 10. 建立完整預設資料
+// 9. 預設完整資料
 // ==========================================
 
 function getDefaultData() {
 
   return {
 
-    armSlots: getDefaultArmSlots(),
+    armSlots:
+      getDefaultArmSlots(),
 
-    classrooms: getDefaultClassrooms()
+    classrooms:
+      getDefaultClassrooms()
 
   };
 
@@ -155,14 +152,10 @@ function getDefaultData() {
 
 
 // ==========================================
-// 11. 資料格式整理 / 舊資料轉換
+// 10. 資料格式整理
 // ==========================================
 
 function normalizeData(data) {
-
-  // ----------------------------------------
-  // 如果完全沒有資料
-  // ----------------------------------------
 
   if (!data) {
 
@@ -172,7 +165,7 @@ function normalizeData(data) {
 
 
   // ----------------------------------------
-  // 新格式
+  // 已經是新版格式
   // ----------------------------------------
 
   if (
@@ -186,39 +179,32 @@ function normalizeData(data) {
 
 
   // ----------------------------------------
-  // 舊版本 data.json
-  //
-  // 舊版本直接把 1～8 格放在最外層
-  // 現在把它搬到 armSlots
+  // 舊版只有機械手臂資料
   // ----------------------------------------
 
-  const oldArmSlots = {};
+  const armSlots = {};
+
 
   for (let i = 1; i <= 8; i++) {
 
     if (data[i]) {
 
-      oldArmSlots[i] = data[i];
+      armSlots[i] = data[i];
 
     }
 
   }
 
 
-  // 如果舊資料不存在
-  // 就建立新的 8 格
-
-  const armSlots =
-    Object.keys(oldArmSlots).length > 0
-      ? oldArmSlots
-      : getDefaultArmSlots();
-
-
   return {
 
-    armSlots: armSlots,
+    armSlots:
+      Object.keys(armSlots).length > 0
+        ? armSlots
+        : getDefaultArmSlots(),
 
-    classrooms: getDefaultClassrooms()
+    classrooms:
+      getDefaultClassrooms()
 
   };
 
@@ -226,35 +212,37 @@ function normalizeData(data) {
 
 
 // ==========================================
-// 12. 讀取 data.json
+// 11. 讀取資料
 // ==========================================
 
 function loadData() {
 
   try {
 
-    if (fs.existsSync(DATA_FILE)) {
+    if (
+      fs.existsSync(DATA_FILE)
+    ) {
 
-      const fileData =
+      const text =
         fs.readFileSync(
           DATA_FILE,
           'utf8'
         );
 
 
-      const parsedData =
-        JSON.parse(fileData);
+      const data =
+        JSON.parse(text);
 
 
-      return normalizeData(parsedData);
+      return normalizeData(data);
 
     }
 
-  } catch (err) {
+  } catch (error) {
 
     console.error(
-      '讀取 data.json 失敗:',
-      err.message
+      '讀取 data.json 失敗：',
+      error.message
     );
 
   }
@@ -266,40 +254,40 @@ function loadData() {
 
 
 // ==========================================
-// 13. 儲存 data.json
+// 12. 儲存資料
 // ==========================================
 
 function saveData(data) {
 
   try {
 
-    const jsonData =
+    fs.writeFileSync(
+
+      DATA_FILE,
+
       JSON.stringify(
         data,
         null,
         2
-      );
+      ),
 
-
-    fs.writeFileSync(
-      DATA_FILE,
-      jsonData,
       'utf8'
+
     );
 
 
     console.log(
-      '資料已成功儲存到 data.json'
+      '資料已儲存'
     );
 
 
     return true;
 
-  } catch (err) {
+  } catch (error) {
 
     console.error(
-      '寫入 data.json 失敗:',
-      err.message
+      '儲存 data.json 失敗：',
+      error.message
     );
 
 
@@ -311,25 +299,29 @@ function saveData(data) {
 
 
 // ==========================================
-// 14. 啟動時讀取資料
+// 13. 載入系統資料
 // ==========================================
 
-let systemData = loadData();
-
-
-// ==========================================
-// 15. Ping API
-// ==========================================
-
-app.get('/ping', (req, res) => {
-
-  res.send('pong');
-
-});
+let systemData =
+  loadData();
 
 
 // ==========================================
-// 16. 登入驗證
+// 14. Ping
+// ==========================================
+
+app.get(
+  '/ping',
+  (req, res) => {
+
+    res.send('pong');
+
+  }
+);
+
+
+// ==========================================
+// 15. 測試帳號
 // ==========================================
 
 const accounts = {
@@ -354,131 +346,159 @@ const accounts = {
 
 
 // ==========================================
-// 17. 登入 API
+// 16. 登入
 // ==========================================
 
-app.post('/api/login', (req, res) => {
+app.post(
+  '/api/login',
+  (req, res) => {
 
-  const {
-    username,
-    password
-  } = req.body;
-
-
-  if (!username || !password) {
-
-    return res.status(400).json({
-
-      success: false,
-
-      message: '請輸入帳號與密碼！'
-
-    });
-
-  }
+    const {
+      username,
+      password
+    } = req.body;
 
 
-  const account =
-    accounts[username];
+    if (
+      !username ||
+      !password
+    ) {
+
+      return res.status(400).json({
+
+        success: false,
+
+        message:
+          '請輸入帳號與密碼！'
+
+      });
+
+    }
 
 
-  if (
-    !account ||
-    account.password !== password
-  ) {
-
-    return res.status(401).json({
-
-      success: false,
-
-      message: '帳號或密碼錯誤！'
-
-    });
-
-  }
+    const account =
+      accounts[username];
 
 
-  req.session.user = {
+    if (
+      !account ||
+      account.password !== password
+    ) {
 
-    username: username,
+      return res.status(401).json({
 
-    role: account.role
+        success: false,
 
-  };
+        message:
+          '帳號或密碼錯誤！'
 
+      });
 
-  res.json({
-
-    success: true,
-
-    message: '登入成功！',
-
-    role: account.role
-
-  });
-
-});
+    }
 
 
-// ==========================================
-// 18. 取得目前登入者
-// ==========================================
+    req.session.user = {
 
-app.get('/api/me', (req, res) => {
+      username,
 
-  if (!req.session.user) {
+      role:
+        account.role
 
-    return res.status(401).json({
-
-      success: false,
-
-      message: '尚未登入'
-
-    });
-
-  }
-
-
-  res.json({
-
-    success: true,
-
-    user: req.session.user
-
-  });
-
-});
-
-
-// ==========================================
-// 19. 登出
-// ==========================================
-
-app.post('/api/logout', (req, res) => {
-
-  req.session.destroy(() => {
-
-    res.clearCookie('connect.sid');
+    };
 
 
     res.json({
 
       success: true,
 
-      message: '已成功登出'
+      message:
+        '登入成功！',
+
+      role:
+        account.role
 
     });
 
-  });
-
-});
+  }
+);
 
 
 // ==========================================
-// 20. 登入檢查 Middleware
+// 17. 取得目前登入者
 // ==========================================
 
-function requireLogin(req, res, next) {
+app.get(
+  '/api/me',
+  (req, res) => {
+
+    if (!req.session.user) {
+
+      return res.status(401).json({
+
+        success: false,
+
+        message:
+          '尚未登入'
+
+      });
+
+    }
+
+
+    res.json({
+
+      success: true,
+
+      user:
+        req.session.user
+
+    });
+
+  }
+);
+
+
+// ==========================================
+// 18. 登出
+// ==========================================
+
+app.post(
+  '/api/logout',
+  (req, res) => {
+
+    req.session.destroy(
+      () => {
+
+        res.clearCookie(
+          'connect.sid'
+        );
+
+
+        res.json({
+
+          success: true,
+
+          message:
+            '已成功登出'
+
+        });
+
+      }
+    );
+
+  }
+);
+
+
+// ==========================================
+// 19. 登入檢查
+// ==========================================
+
+function requireLogin(
+  req,
+  res,
+  next
+) {
 
   if (!req.session.user) {
 
@@ -486,7 +506,8 @@ function requireLogin(req, res, next) {
 
       success: false,
 
-      message: '請先登入'
+      message:
+        '請先登入'
 
     });
 
@@ -499,10 +520,14 @@ function requireLogin(req, res, next) {
 
 
 // ==========================================
-// 21. 管理員檢查 Middleware
+// 20. 管理員檢查
 // ==========================================
 
-function requireAdmin(req, res, next) {
+function requireAdmin(
+  req,
+  res,
+  next
+) {
 
   if (!req.session.user) {
 
@@ -510,7 +535,8 @@ function requireAdmin(req, res, next) {
 
       success: false,
 
-      message: '請先登入'
+      message:
+        '請先登入'
 
     });
 
@@ -518,14 +544,16 @@ function requireAdmin(req, res, next) {
 
 
   if (
-    req.session.user.role !== 'admin'
+    req.session.user.role !==
+    'admin'
   ) {
 
     return res.status(403).json({
 
       success: false,
 
-      message: '只有管理員可以執行此操作'
+      message:
+        '只有管理員可以執行此操作'
 
     });
 
@@ -539,13 +567,13 @@ function requireAdmin(req, res, next) {
 
 // ==================================================
 // ==================================================
-//                 教室課表 API
+//                 教室課表系統
 // ==================================================
 // ==================================================
 
 
 // ==========================================
-// 22. 取得全部 8 個教室
+// 21. 取得全部 8 間教室
 // ==========================================
 
 app.get(
@@ -557,7 +585,8 @@ app.get(
 
       success: true,
 
-      data: systemData.classrooms
+      data:
+        systemData.classrooms
 
     });
 
@@ -566,7 +595,7 @@ app.get(
 
 
 // ==========================================
-// 23. 取得單一教室
+// 22. 取得單一教室
 // ==========================================
 
 app.get(
@@ -588,22 +617,20 @@ app.get(
 
         success: false,
 
-        message: '教室編號必須為 1～8'
+        message:
+          '教室編號必須為 1～8'
 
       });
 
     }
 
 
-    const classroom =
-      systemData.classrooms[id];
-
-
     res.json({
 
       success: true,
 
-      data: classroom
+      data:
+        systemData.classrooms[id]
 
     });
 
@@ -612,7 +639,7 @@ app.get(
 
 
 // ==========================================
-// 24. 修改教室名稱
+// 23. 修改教室名稱
 // ==========================================
 
 app.post(
@@ -634,28 +661,28 @@ app.post(
 
         success: false,
 
-        message: '教室編號必須為 1～8'
+        message:
+          '教室編號必須為 1～8'
 
       });
 
     }
 
 
-    const {
-      name
-    } = req.body;
+    const name =
+      String(
+        req.body.name || ''
+      ).trim();
 
 
-    if (
-      typeof name !== 'string' ||
-      !name.trim()
-    ) {
+    if (!name) {
 
       return res.status(400).json({
 
         success: false,
 
-        message: '請輸入教室名稱'
+        message:
+          '教室名稱不能為空白'
 
       });
 
@@ -663,20 +690,19 @@ app.post(
 
 
     systemData.classrooms[id].name =
-      name.trim();
+      name;
 
 
-    const saved =
-      saveData(systemData);
-
-
-    if (!saved) {
+    if (
+      !saveData(systemData)
+    ) {
 
       return res.status(500).json({
 
         success: false,
 
-        message: '教室名稱儲存失敗'
+        message:
+          '教室名稱儲存失敗'
 
       });
 
@@ -687,7 +713,8 @@ app.post(
 
       success: true,
 
-      message: `教室 ${id} 名稱已更新`,
+      message:
+        '教室名稱已更新',
 
       data:
         systemData.classrooms[id]
@@ -699,7 +726,17 @@ app.post(
 
 
 // ==========================================
-// 25. 新增課表
+// 24. 新增課表
+// ==========================================
+//
+// 資料格式：
+//
+// {
+//   className: "控制二甲",
+//   weekday: "星期一",
+//   startTime: "08:00",
+//   endTime: "10:00"
+// }
 // ==========================================
 
 app.post(
@@ -721,40 +758,50 @@ app.post(
 
         success: false,
 
-        message: '教室編號必須為 1～8'
+        message:
+          '教室編號必須為 1～8'
 
       });
 
     }
 
 
-    const {
-      teacherId,
-      weekday,
-      borrowTime,
-      returnTime
-    } = req.body;
+    const className =
+      String(
+        req.body.className || ''
+      ).trim();
+
+
+    const weekday =
+      String(
+        req.body.weekday || ''
+      ).trim();
+
+
+    const startTime =
+      String(
+        req.body.startTime || ''
+      ).trim();
+
+
+    const endTime =
+      String(
+        req.body.endTime || ''
+      ).trim();
 
 
     // ----------------------------------------
-    // 檢查教師編號
+    // 檢查班級
     // ----------------------------------------
 
-    const teacherNumber =
-      parseInt(teacherId);
-
-
-    if (
-      isNaN(teacherNumber) ||
-      teacherNumber < 1 ||
-      teacherNumber > 8
-    ) {
+    if (!className) {
 
       return res.status(400).json({
 
         success: false,
 
-        message: '教師編號必須為 1～8'
+        message:
+          '請輸入班級'
 
       });
 
@@ -771,7 +818,8 @@ app.post(
 
         success: false,
 
-        message: '請選擇星期'
+        message:
+          '請輸入星期'
 
       });
 
@@ -783,15 +831,16 @@ app.post(
     // ----------------------------------------
 
     if (
-      !borrowTime ||
-      !returnTime
+      !startTime ||
+      !endTime
     ) {
 
       return res.status(400).json({
 
         success: false,
 
-        message: '請輸入借用與歸還時間'
+        message:
+          '請輸入開始與結束時間'
 
       });
 
@@ -799,31 +848,36 @@ app.post(
 
 
     // ----------------------------------------
-    // 建立課表 ID
+    // 建立唯一 ID
     // ----------------------------------------
 
     const scheduleId =
       Date.now().toString() +
       Math.floor(
-        Math.random() * 1000
+        Math.random() * 10000
       ).toString();
 
 
     // ----------------------------------------
-    // 建立課表資料
+    // 建立課表
     // ----------------------------------------
 
     const newSchedule = {
 
-      id: scheduleId,
+      id:
+        scheduleId,
 
-      teacherId: teacherNumber,
+      className:
+        className,
 
-      weekday: weekday,
+      weekday:
+        weekday,
 
-      borrowTime: borrowTime,
+      startTime:
+        startTime,
 
-      returnTime: returnTime
+      endTime:
+        endTime
 
     };
 
@@ -832,45 +886,41 @@ app.post(
     // 放入指定教室
     // ----------------------------------------
 
-    systemData.classrooms[
-      classroomId
-    ].schedules.push(
-      newSchedule
-    );
+    systemData
+      .classrooms[classroomId]
+      .schedules
+      .push(newSchedule);
 
 
     // ----------------------------------------
-    // 寫入 data.json
+    // 儲存
     // ----------------------------------------
 
-    const saved =
-      saveData(systemData);
-
-
-    if (!saved) {
+    if (
+      !saveData(systemData)
+    ) {
 
       return res.status(500).json({
 
         success: false,
 
-        message: '課表儲存失敗'
+        message:
+          '課表儲存失敗'
 
       });
 
     }
 
 
-    // ----------------------------------------
-    // 回傳成功
-    // ----------------------------------------
-
     res.json({
 
       success: true,
 
-      message: '課表新增成功！',
+      message:
+        '課表新增成功！',
 
-      data: newSchedule
+      data:
+        newSchedule
 
     });
 
@@ -879,7 +929,7 @@ app.post(
 
 
 // ==========================================
-// 26. 刪除課表
+// 25. 刪除課表
 // ==========================================
 
 app.delete(
@@ -894,7 +944,9 @@ app.delete(
 
 
     const scheduleId =
-      req.params.scheduleId;
+      String(
+        req.params.scheduleId
+      );
 
 
     if (
@@ -907,62 +959,58 @@ app.delete(
 
         success: false,
 
-        message: '教室編號錯誤'
+        message:
+          '教室編號錯誤'
 
       });
 
     }
 
 
-    const schedules =
-      systemData.classrooms[
-        classroomId
-      ].schedules;
+    const classroom =
+      systemData
+        .classrooms[classroomId];
 
 
-    const originalLength =
-      schedules.length;
+    const before =
+      classroom.schedules.length;
 
 
-    systemData.classrooms[
-      classroomId
-    ].schedules =
-      schedules.filter(
+    classroom.schedules =
+      classroom.schedules.filter(
         schedule =>
           String(schedule.id) !==
-          String(scheduleId)
+          scheduleId
       );
 
 
     if (
-      systemData.classrooms[
-        classroomId
-      ].schedules.length ===
-      originalLength
+      classroom.schedules.length ===
+      before
     ) {
 
       return res.status(404).json({
 
         success: false,
 
-        message: '找不到指定課表'
+        message:
+          '找不到這筆課表'
 
       });
 
     }
 
 
-    const saved =
-      saveData(systemData);
-
-
-    if (!saved) {
+    if (
+      !saveData(systemData)
+    ) {
 
       return res.status(500).json({
 
         success: false,
 
-        message: '課表刪除後儲存失敗'
+        message:
+          '刪除後儲存失敗'
 
       });
 
@@ -973,7 +1021,8 @@ app.delete(
 
       success: true,
 
-      message: '課表已刪除'
+      message:
+        '課表已刪除'
 
     });
 
@@ -982,19 +1031,17 @@ app.delete(
 
 
 // ==========================================
-// 27. 匯入課表 CSV / Excel
+// 26. 匯入 CSV
 // ==========================================
 //
-// CSV 格式：
+// 格式：
 //
-// 教師編號,教室,星期幾,借用時間,歸還時間
+// 班級,教室,星期,開始時間,結束時間
 //
 // 例如：
 //
-// 1,1,星期一,08:00,10:00
-// 2,3,星期二,10:00,12:00
-//
-// 教室欄位目前接受 1～8
+// 控制二甲,1,星期一,08:00,10:00
+// 電子二甲,2,星期二,10:00,12:00
 // ==========================================
 
 app.post(
@@ -1009,7 +1056,8 @@ app.post(
 
         success: false,
 
-        message: '請選擇 CSV / Excel 檔案'
+        message:
+          '請選擇 CSV / Excel 檔案'
 
       });
 
@@ -1048,12 +1096,13 @@ app.post(
 
 
       // ----------------------------------------
-      // 清除原本課表
+      // CSV 匯入前清空目前 8 間教室課表
       // ----------------------------------------
 
       for (let i = 1; i <= 8; i++) {
 
-        systemData.classrooms[i]
+        systemData
+          .classrooms[i]
           .schedules = [];
 
       }
@@ -1066,7 +1115,8 @@ app.post(
       rows.forEach(
         (row, index) => {
 
-          // 第一列通常是標題
+          // 第一列標題跳過
+
           if (index === 0) {
 
             return;
@@ -1086,8 +1136,10 @@ app.post(
           }
 
 
-          const teacherId =
-            parseInt(row[0]);
+          const className =
+            String(
+              row[0] || ''
+            ).trim();
 
 
           const classroomId =
@@ -1095,51 +1147,31 @@ app.post(
 
 
           const weekday =
-            String(row[2] || '').trim();
+            String(
+              row[2] || ''
+            ).trim();
 
 
-          const borrowTime =
-            String(row[3] || '').trim();
+          const startTime =
+            String(
+              row[3] || ''
+            ).trim();
 
 
-          const returnTime =
-            String(row[4] || '').trim();
-
-
-          // --------------------------------------
-          // 驗證資料
-          // --------------------------------------
-
-          if (
-            isNaN(teacherId) ||
-            teacherId < 1 ||
-            teacherId > 8
-          ) {
-
-            skipCount++;
-
-            return;
-
-          }
+          const endTime =
+            String(
+              row[4] || ''
+            ).trim();
 
 
           if (
+            !className ||
             isNaN(classroomId) ||
             classroomId < 1 ||
-            classroomId > 8
-          ) {
-
-            skipCount++;
-
-            return;
-
-          }
-
-
-          if (
+            classroomId > 8 ||
             !weekday ||
-            !borrowTime ||
-            !returnTime
+            !startTime ||
+            !endTime
           ) {
 
             skipCount++;
@@ -1148,35 +1180,30 @@ app.post(
 
           }
 
-
-          // --------------------------------------
-          // 建立課表
-          // --------------------------------------
 
           const schedule = {
 
             id:
               Date.now().toString() +
               Math.floor(
-                Math.random() * 100000
+                Math.random() * 1000000
               ).toString(),
 
-            teacherId: teacherId,
+            className,
 
-            weekday: weekday,
+            weekday,
 
-            borrowTime: borrowTime,
+            startTime,
 
-            returnTime: returnTime
+            endTime
 
           };
 
 
-          systemData.classrooms[
-            classroomId
-          ].schedules.push(
-            schedule
-          );
+          systemData
+            .classrooms[classroomId]
+            .schedules
+            .push(schedule);
 
 
           successCount++;
@@ -1185,21 +1212,16 @@ app.post(
       );
 
 
-      // ----------------------------------------
-      // 儲存
-      // ----------------------------------------
-
-      const saved =
-        saveData(systemData);
-
-
-      if (!saved) {
+      if (
+        !saveData(systemData)
+      ) {
 
         return res.status(500).json({
 
           success: false,
 
-          message: 'CSV 匯入後儲存失敗'
+          message:
+            'CSV 匯入後儲存失敗'
 
         });
 
@@ -1215,11 +1237,11 @@ app.post(
 
       });
 
-    } catch (err) {
+    } catch (error) {
 
       console.error(
-        'CSV 匯入錯誤:',
-        err
+        'CSV 匯入失敗：',
+        error
       );
 
 
@@ -1228,8 +1250,8 @@ app.post(
         success: false,
 
         message:
-          'CSV / Excel 解析失敗：' +
-          err.message
+          'CSV 解析失敗：' +
+          error.message
 
       });
 
@@ -1240,7 +1262,7 @@ app.post(
 
 
 // ==========================================
-// 28. 匯出課表 CSV
+// 27. 匯出課表
 // ==========================================
 
 app.get(
@@ -1251,25 +1273,20 @@ app.get(
     const rows = [];
 
 
-    // CSV 標題
     rows.push([
 
-      '教師編號',
+      '班級',
 
       '教室',
 
-      '星期幾',
+      '星期',
 
-      '借用時間',
+      '開始時間',
 
-      '歸還時間'
+      '結束時間'
 
     ]);
 
-
-    // ----------------------------------------
-    // 8 間教室逐一輸出
-    // ----------------------------------------
 
     for (let i = 1; i <= 8; i++) {
 
@@ -1282,15 +1299,15 @@ app.get(
 
           rows.push([
 
-            schedule.teacherId,
+            schedule.className,
 
             i,
 
             schedule.weekday,
 
-            schedule.borrowTime,
+            schedule.startTime,
 
-            schedule.returnTime
+            schedule.endTime
 
           ]);
 
@@ -1301,7 +1318,9 @@ app.get(
 
 
     const worksheet =
-      xlsx.utils.aoa_to_sheet(rows);
+      xlsx.utils.aoa_to_sheet(
+        rows
+      );
 
 
     const workbook =
@@ -1345,13 +1364,13 @@ app.get(
 
 // ==================================================
 // ==================================================
-//                 機械手臂 8 格 API
+//                 機械手臂 8 格
 // ==================================================
 // ==================================================
 
 
 // ==========================================
-// 29. 取得機械手臂 8 格
+// 28. 取得機械手臂格位
 // ==========================================
 
 app.get(
@@ -1363,7 +1382,8 @@ app.get(
 
       success: true,
 
-      data: systemData.armSlots
+      data:
+        systemData.armSlots
 
     });
 
@@ -1372,7 +1392,7 @@ app.get(
 
 
 // ==========================================
-// 30. 更新單一機械手臂格位
+// 29. 更新機械手臂格位
 // ==========================================
 
 app.post(
@@ -1392,7 +1412,8 @@ app.post(
 
         success: false,
 
-        message: '無此格位編號（僅限 1～8）'
+        message:
+          '無此格位編號（僅限 1～8）'
 
       });
 
@@ -1406,61 +1427,49 @@ app.post(
     } = req.body;
 
 
-    // ----------------------------------------
-    // 修改教室名稱
-    // ----------------------------------------
-
     if (
       roomName !== undefined
     ) {
 
-      systemData.armSlots[
-        slotId
-      ].roomName =
+      systemData
+        .armSlots[slotId]
+        .roomName =
         String(roomName).trim();
 
     }
 
 
-    // ----------------------------------------
-    // 修改鑰匙名稱
-    // ----------------------------------------
-
     if (
       keyName !== undefined
     ) {
 
-      systemData.armSlots[
-        slotId
-      ].keyName =
+      systemData
+        .armSlots[slotId]
+        .keyName =
         String(keyName).trim();
 
     }
 
 
-    // ----------------------------------------
-    // 修改借用人
-    // ----------------------------------------
-
     if (
       borrower !== undefined
     ) {
 
-      const trimmedBorrower =
+      const name =
         String(borrower).trim();
 
 
-      systemData.armSlots[
-        slotId
-      ].borrower =
-        trimmedBorrower;
+      systemData
+        .armSlots[slotId]
+        .borrower =
+        name;
 
 
-      if (trimmedBorrower) {
+      if (name) {
 
-        systemData.armSlots[
-          slotId
-        ].borrowTime =
+        systemData
+          .armSlots[slotId]
+          .borrowTime =
           new Date().toLocaleString(
             'zh-TW',
             {
@@ -1471,26 +1480,25 @@ app.post(
 
       } else {
 
-        systemData.armSlots[
-          slotId
-        ].borrowTime = '';
+        systemData
+          .armSlots[slotId]
+          .borrowTime = '';
 
       }
 
     }
 
 
-    const saved =
-      saveData(systemData);
-
-
-    if (!saved) {
+    if (
+      !saveData(systemData)
+    ) {
 
       return res.status(500).json({
 
         success: false,
 
-        message: '格位資料儲存失敗'
+        message:
+          '格位資料儲存失敗'
 
       });
 
@@ -1502,7 +1510,7 @@ app.post(
       success: true,
 
       message:
-        `格位 ${slotId} 資料已成功更新！`
+        `格位 ${slotId} 已更新`
 
     });
 
@@ -1511,7 +1519,7 @@ app.post(
 
 
 // ==========================================
-// 31. 機械手臂 CSV / Excel
+// 30. 機械手臂 CSV
 // ==========================================
 
 app.post(
@@ -1592,7 +1600,9 @@ app.post(
 
 
           const roomName =
-            String(row[1]).trim();
+            String(
+              row[1] || ''
+            ).trim();
 
 
           const keyName =
@@ -1607,9 +1617,7 @@ app.post(
               : '';
 
 
-          systemData.armSlots[
-            slotId
-          ] = {
+          systemData.armSlots[slotId] = {
 
             slotId,
 
@@ -1639,17 +1647,16 @@ app.post(
       );
 
 
-      const saved =
-        saveData(systemData);
-
-
-      if (!saved) {
+      if (
+        !saveData(systemData)
+      ) {
 
         return res.status(500).json({
 
           success: false,
 
-          message: '機械手臂資料儲存失敗'
+          message:
+            '機械手臂資料儲存失敗'
 
         });
 
@@ -1661,11 +1668,11 @@ app.post(
         success: true,
 
         message:
-          `成功更新 ${count} 個格位的對應設定！`
+          `成功更新 ${count} 個格位`
 
       });
 
-    } catch (err) {
+    } catch (error) {
 
       res.status(500).json({
 
@@ -1673,7 +1680,7 @@ app.post(
 
         message:
           '解析失敗：' +
-          err.message
+          error.message
 
       });
 
@@ -1684,7 +1691,7 @@ app.post(
 
 
 // ==========================================
-// 32. 重置機械手臂 8 格
+// 31. 重置機械手臂
 // ==========================================
 
 app.post(
@@ -1696,17 +1703,16 @@ app.post(
       getDefaultArmSlots();
 
 
-    const saved =
-      saveData(systemData);
-
-
-    if (!saved) {
+    if (
+      !saveData(systemData)
+    ) {
 
       return res.status(500).json({
 
         success: false,
 
-        message: '重置後儲存失敗'
+        message:
+          '重置失敗'
 
       });
 
@@ -1718,7 +1724,7 @@ app.post(
       success: true,
 
       message:
-        '已重置 8 個格位為預設狀態！'
+        '機械手臂 8 格已重置'
 
     });
 
@@ -1727,7 +1733,7 @@ app.post(
 
 
 // ==========================================
-// 33. 啟動伺服器
+// 32. 啟動
 // ==========================================
 
 const PORT =
