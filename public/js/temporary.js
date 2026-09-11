@@ -16,18 +16,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   console.log("temporary.js 已載入");
 
-  // 身分切換
-  const identitySelect = document.getElementById("identity");
+  const identity =
+    document.getElementById("identity");
 
-  if (identitySelect) {
-    identitySelect.addEventListener("change", updateIdentityFields);
+  if (identity) {
+    identity.addEventListener(
+      "change",
+      updateIdentityFields
+    );
   }
 
-  // 預設狀態
   updateIdentityFields();
 
-  // 載入使用者
   loadUser();
+
 });
 
 
@@ -39,129 +41,161 @@ async function loadUser() {
 
   try {
 
-    const response = await fetch("/api/me");
+    const response =
+      await fetch("/api/me");
 
     if (!response.ok) {
-      window.location.href = "/index.html";
+
+      window.location.href =
+        "/index.html";
+
       return;
     }
 
-    const result = await response.json();
+    const result =
+      await response.json();
 
     if (!result.loggedIn) {
-      window.location.href = "/index.html";
+
+      window.location.href =
+        "/index.html";
+
       return;
     }
 
-    currentUser = result.user;
+    currentUser =
+      result.user;
 
-    console.log("目前登入者：", currentUser);
+    console.log(
+      "目前登入者：",
+      currentUser
+    );
 
-    // 顯示帳號
-    const usernameElement = document.getElementById("username");
 
-    if (usernameElement) {
-      usernameElement.textContent = currentUser.username;
+    // 顯示使用者資訊
+    const userInfo =
+      document.getElementById(
+        "userInfo"
+      );
+
+    if (userInfo) {
+
+      userInfo.textContent =
+        `目前登入：${currentUser.name}（${
+          currentUser.role === "admin"
+            ? "管理員"
+            : "老師"
+        }）`;
+
     }
 
-    // 顯示身分
-    const roleElement = document.getElementById("role");
-
-    if (roleElement) {
-      roleElement.textContent =
-        currentUser.role === "admin"
-          ? "管理員"
-          : "老師";
-    }
-
-    // 管理員功能
-    const adminOnlyElements =
-      document.querySelectorAll(".admin-only");
-
-    adminOnlyElements.forEach(element => {
-
-      if (currentUser.role === "admin") {
-        element.style.display = "";
-      } else {
-        element.style.display = "none";
-      }
-
-    });
 
     // 載入資料
     await loadBookings();
+
     await loadArmSlots();
+
 
   } catch (error) {
 
-    console.error("loadUser 發生錯誤：", error);
+    console.error(
+      "loadUser 發生錯誤：",
+      error
+    );
 
-    alert("系統載入失敗：" + error.message);
+    alert(
+      "系統載入失敗：" +
+      error.message
+    );
+
   }
+
 }
 
 
 // ======================================================
 // 身分切換
-// 老師：班級、學號不用填
-// 學生：班級、學號必填
 // ======================================================
 
 function updateIdentityFields() {
 
-  const identityElement =
-    document.getElementById("identity");
+  const identity =
+    document.getElementById(
+      "identity"
+    );
 
-  const classNameElement =
-    document.getElementById("className");
+  const className =
+    document.getElementById(
+      "className"
+    );
 
-  const studentIdElement =
-    document.getElementById("studentId");
+  const studentId =
+    document.getElementById(
+      "studentId"
+    );
 
-  if (!identityElement ||
-      !classNameElement ||
-      !studentIdElement) {
+
+  if (
+    !identity ||
+    !className ||
+    !studentId
+  ) {
+
     return;
   }
 
-  const identity = identityElement.value;
 
   // -------------------------------
   // 老師
   // -------------------------------
 
-  if (identity === "teacher") {
+  if (identity.value === "teacher") {
 
-    classNameElement.value = "";
-    studentIdElement.value = "";
+    className.value = "";
 
-    classNameElement.required = false;
-    studentIdElement.required = false;
+    studentId.value = "";
 
-    classNameElement.disabled = true;
-    studentIdElement.disabled = true;
+    className.required = false;
 
-    classNameElement.placeholder = "老師免填";
-    studentIdElement.placeholder = "老師免填";
+    studentId.required = false;
+
+    className.disabled = true;
+
+    studentId.disabled = true;
+
+    className.placeholder =
+      "老師免填";
+
+    studentId.placeholder =
+      "老師免填";
 
   }
+
 
   // -------------------------------
   // 學生
   // -------------------------------
 
-  else if (identity === "student") {
+  else if (
+    identity.value === "student"
+  ) {
 
-    classNameElement.disabled = false;
-    studentIdElement.disabled = false;
+    className.disabled = false;
 
-    classNameElement.required = true;
-    studentIdElement.required = true;
+    studentId.disabled = false;
 
-    classNameElement.placeholder = "例如：控制二甲";
-    studentIdElement.placeholder = "請輸入學號";
+    className.required = true;
+
+    studentId.required = true;
+
+    className.placeholder =
+      "例如：控制二甲";
+
+    studentId.placeholder =
+      "例如：91123456";
 
   }
+
 
   // -------------------------------
   // 尚未選擇
@@ -169,20 +203,27 @@ function updateIdentityFields() {
 
   else {
 
-    classNameElement.disabled = false;
-    studentIdElement.disabled = false;
+    className.disabled = false;
 
-    classNameElement.required = false;
-    studentIdElement.required = false;
+    studentId.disabled = false;
 
-    classNameElement.placeholder = "請先選擇身分";
-    studentIdElement.placeholder = "請先選擇身分";
+    className.required = false;
+
+    studentId.required = false;
+
+    className.placeholder =
+      "請先選擇身分";
+
+    studentId.placeholder =
+      "請先選擇身分";
+
   }
+
 }
 
 
 // ======================================================
-// 載入臨時借用資料
+// 載入申請列表
 // ======================================================
 
 async function loadBookings() {
@@ -190,57 +231,85 @@ async function loadBookings() {
   try {
 
     const response =
-      await fetch("/api/temporary-bookings");
+      await fetch(
+        "/api/temporary-bookings"
+      );
 
-    const result = await response.json();
+    const result =
+      await response.json();
+
 
     if (!result.success) {
 
-      alert(result.message || "無法取得借用資料");
+      alert(
+        result.message ||
+        "無法取得申請資料"
+      );
 
       return;
     }
 
-    bookings = result.bookings || [];
 
-    // 最新申請在前面
-    bookings.sort((a, b) => {
+    bookings =
+      result.bookings || [];
 
-      return new Date(b.createdAt) -
-             new Date(a.createdAt);
 
-    });
+    // 最新申請排最上面
+    bookings.sort(
+      (a, b) =>
+        new Date(b.createdAt) -
+        new Date(a.createdAt)
+    );
+
 
     renderBookings();
 
+
   } catch (error) {
 
-    console.error("loadBookings 發生錯誤：", error);
+    console.error(
+      "loadBookings 發生錯誤：",
+      error
+    );
 
   }
+
 }
 
 
 // ======================================================
-// 顯示借用申請
+// 顯示申請列表
 // ======================================================
 
 function renderBookings() {
 
-  const tbody =
-    document.getElementById("bookingTableBody");
+  const table =
+    document.getElementById(
+      "bookingTable"
+    );
 
-  if (!tbody) {
+
+  if (!table) {
+
+    console.error(
+      "找不到 bookingTable"
+    );
+
     return;
   }
 
-  tbody.innerHTML = "";
+
+  table.innerHTML = "";
+
 
   if (bookings.length === 0) {
 
-    tbody.innerHTML = `
+    table.innerHTML = `
       <tr>
-        <td colspan="10" style="text-align:center;">
+        <td
+          colspan="10"
+          style="text-align:center;"
+        >
           目前沒有臨時借用申請
         </td>
       </tr>
@@ -249,176 +318,263 @@ function renderBookings() {
     return;
   }
 
-  bookings.forEach(booking => {
 
-    const tr = document.createElement("tr");
+  bookings.forEach(
+    booking => {
 
-    // 身分文字
-    const identityText =
-      booking.identity === "teacher"
-        ? "老師"
-        : "學生";
+      const tr =
+        document.createElement(
+          "tr"
+        );
 
-    // 狀態文字
-    let statusText =
-      booking.statusText || "待審核";
 
-    // 時間
-    const timeText =
-      `${booking.startTime}～${booking.endTime}`;
+      // 身分
+      const identityText =
+        booking.identity === "teacher"
+          ? "老師"
+          : "學生";
 
-    // 操作按鈕
-    let actionHTML = "";
 
-    // 管理員才能審核
-    if (
-      currentUser &&
-      currentUser.role === "admin"
-    ) {
+      // 狀態
+      const statusText =
+        booking.statusText ||
+        "待審核";
 
-      if (booking.status === "pending") {
 
-        actionHTML = `
-          <button
-            onclick="approveBooking(${booking.id})">
-            核准
-          </button>
+      // 時間
+      const timeText =
+        `${booking.startTime || "-"}～${
+          booking.endTime || "-"
+        }`;
 
-          <button
-            onclick="rejectBooking(${booking.id})">
-            駁回
-          </button>
-        `;
 
-      }
+      // 操作
+      let actionHTML = "";
 
-      else if (
-        booking.status === "approved"
+
+      if (
+        currentUser &&
+        currentUser.role === "admin"
       ) {
 
-        actionHTML = `
-          <button
-            onclick="completeBooking(${booking.id})">
-            完成借用
-          </button>
-        `;
+
+        // 待審核
+        if (
+          booking.status ===
+          "pending"
+        ) {
+
+          actionHTML = `
+            <button
+              onclick="approveBooking(${booking.id})"
+            >
+              核准
+            </button>
+
+            <button
+              onclick="rejectBooking(${booking.id})"
+            >
+              駁回
+            </button>
+          `;
+
+        }
+
+
+        // 已核准
+        else if (
+          booking.status ===
+          "approved"
+        ) {
+
+          actionHTML = `
+            <button
+              onclick="completeBooking(${booking.id})"
+            >
+              完成借用
+            </button>
+          `;
+
+        }
 
       }
 
+
+      tr.innerHTML = `
+
+        <td>
+          ${escapeHTML(statusText)}
+        </td>
+
+        <td>
+          ${escapeHTML(identityText)}
+        </td>
+
+        <td>
+          ${escapeHTML(
+            booking.className || "-"
+          )}
+        </td>
+
+        <td>
+          ${escapeHTML(
+            booking.applicantName || "-"
+          )}
+        </td>
+
+        <td>
+          ${escapeHTML(
+            booking.studentId || "-"
+          )}
+        </td>
+
+        <td>
+          ${escapeHTML(
+            booking.classroomName || "-"
+          )}
+        </td>
+
+        <td>
+          ${escapeHTML(
+            booking.date || "-"
+          )}
+        </td>
+
+        <td>
+          ${escapeHTML(timeText)}
+        </td>
+
+        <td>
+          ${
+            booking.slotId
+              ? `第 ${booking.slotId} 格`
+              : "-"
+          }
+        </td>
+
+        <td>
+          ${actionHTML}
+        </td>
+
+      `;
+
+
+      table.appendChild(tr);
+
     }
+  );
 
-    tr.innerHTML = `
-      <td>${escapeHTML(statusText)}</td>
-
-      <td>${escapeHTML(identityText)}</td>
-
-      <td>${escapeHTML(
-        booking.className || "-"
-      )}</td>
-
-      <td>${escapeHTML(
-        booking.applicantName || "-"
-      )}</td>
-
-      <td>${escapeHTML(
-        booking.studentId || "-"
-      )}</td>
-
-      <td>${escapeHTML(
-        booking.classroomName || "-"
-      )}</td>
-
-      <td>${escapeHTML(
-        booking.date || "-"
-      )}</td>
-
-      <td>${escapeHTML(timeText)}</td>
-
-      <td>
-        ${
-          booking.slotId
-            ? `第 ${booking.slotId} 格`
-            : "-"
-        }
-      </td>
-
-      <td>
-        ${actionHTML}
-      </td>
-    `;
-
-    tbody.appendChild(tr);
-
-  });
 }
 
 
 // ======================================================
-// 送出臨時借用申請
+// 送出申請
 // ======================================================
 
 async function submitBooking() {
 
+  console.log(
+    "開始送出臨時借用申請"
+  );
+
+
   const identity =
-    document.getElementById("identity")?.value;
+    document.getElementById(
+      "identity"
+    ).value;
+
 
   const className =
-    document.getElementById("className")?.value.trim();
+    document.getElementById(
+      "className"
+    ).value.trim();
+
 
   const applicantName =
-    document.getElementById("applicantName")?.value.trim();
+    document.getElementById(
+      "applicantName"
+    ).value.trim();
+
 
   const studentId =
-    document.getElementById("studentId")?.value.trim();
+    document.getElementById(
+      "studentId"
+    ).value.trim();
 
+
+  // ⚠️ 你的 HTML 是 classroom
   const classroomId =
-    document.getElementById("classroomId")?.value;
+    document.getElementById(
+      "classroom"
+    ).value;
+
 
   const date =
-    document.getElementById("date")?.value;
+    document.getElementById(
+      "date"
+    ).value;
+
 
   const startTime =
-    document.getElementById("startTime")?.value;
+    document.getElementById(
+      "startTime"
+    ).value;
+
 
   const endTime =
-    document.getElementById("endTime")?.value;
+    document.getElementById(
+      "endTime"
+    ).value;
+
 
   const reason =
-    document.getElementById("reason")?.value.trim();
+    document.getElementById(
+      "reason"
+    ).value.trim();
 
 
   // ====================================================
-  // 前端驗證
+  // 驗證
   // ====================================================
 
   if (!identity) {
 
-    alert("請選擇申請身分");
+    alert(
+      "請選擇申請身分"
+    );
 
     return;
   }
+
 
   if (!applicantName) {
 
-    alert("請輸入姓名");
+    alert(
+      "請輸入姓名"
+    );
 
     return;
   }
 
-  // 學生才需要
-  // 班級與學號
+
+  // 學生才需要班級、學號
   if (identity === "student") {
 
     if (!className) {
 
-      alert("學生申請請輸入班級");
+      alert(
+        "學生申請請輸入班級"
+      );
 
       return;
     }
 
+
     if (!studentId) {
 
-      alert("學生申請請輸入學號");
+      alert(
+        "學生申請請輸入學號"
+      );
 
       return;
     }
@@ -428,102 +584,130 @@ async function submitBooking() {
 
   if (!classroomId) {
 
-    alert("請選擇教室");
+    alert(
+      "請選擇教室"
+    );
 
     return;
   }
+
 
   if (!date) {
 
-    alert("請選擇日期");
+    alert(
+      "請選擇日期"
+    );
 
     return;
   }
+
 
   if (!startTime) {
 
-    alert("請選擇開始時間");
+    alert(
+      "請選擇開始時間"
+    );
 
     return;
   }
+
 
   if (!endTime) {
 
-    alert("請選擇結束時間");
+    alert(
+      "請選擇結束時間"
+    );
 
     return;
   }
 
-
-  // ====================================================
-  // 時間檢查
-  // ====================================================
 
   if (startTime >= endTime) {
 
-    alert("結束時間必須晚於開始時間");
+    alert(
+      "結束時間必須晚於開始時間"
+    );
 
     return;
   }
 
 
   // ====================================================
-  // 組成資料
+  // 組資料
   // ====================================================
 
   const data = {
 
-    identity,
+    identity:
+
+      identity,
 
     className:
+
       identity === "student"
         ? className
         : "",
 
-    applicantName,
+    applicantName:
+
+      applicantName,
 
     studentId:
+
       identity === "student"
         ? studentId
         : "",
 
-    classroomId: Number(classroomId),
+    classroomId:
 
-    date,
+      Number(classroomId),
 
-    startTime,
+    date:
 
-    endTime,
+      date,
 
-    reason: reason || ""
+    startTime:
+
+      startTime,
+
+    endTime:
+
+      endTime,
+
+    reason:
+
+      reason || ""
+
   };
 
 
   console.log(
-    "送出臨時借用資料：",
+    "準備送出的資料：",
     data
   );
 
 
   // ====================================================
-  // 傳送到伺服器
+  // 傳給 server.js
   // ====================================================
 
   try {
 
-    const response = await fetch(
-      "/api/temporary-bookings",
-      {
-        method: "POST",
+    const response =
+      await fetch(
+        "/api/temporary-bookings",
+        {
+          method: "POST",
 
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
 
-        body: JSON.stringify(data)
-      }
-    );
+          body:
+            JSON.stringify(data)
+        }
+      );
 
 
     const result =
@@ -547,13 +731,9 @@ async function submitBooking() {
     }
 
 
-    // ==================================================
-    // 成功
-    // ==================================================
-
     alert(
       result.message ||
-      "臨時教室借用申請成功"
+      "申請成功"
     );
 
 
@@ -561,8 +741,10 @@ async function submitBooking() {
     resetBookingForm();
 
 
-    // 重新載入資料
+    // 更新列表
     await loadBookings();
+
+    await loadArmSlots();
 
 
   } catch (error) {
@@ -577,6 +759,7 @@ async function submitBooking() {
     );
 
   }
+
 }
 
 
@@ -586,21 +769,58 @@ async function submitBooking() {
 
 function resetBookingForm() {
 
-  const form =
-    document.getElementById("bookingForm");
+  document.getElementById(
+    "identity"
+  ).value = "";
 
-  if (form) {
 
-    form.reset();
+  document.getElementById(
+    "className"
+  ).value = "";
 
-  }
+
+  document.getElementById(
+    "applicantName"
+  ).value = "";
+
+
+  document.getElementById(
+    "studentId"
+  ).value = "";
+
+
+  document.getElementById(
+    "classroom"
+  ).value = "";
+
+
+  document.getElementById(
+    "date"
+  ).value = "";
+
+
+  document.getElementById(
+    "startTime"
+  ).value = "";
+
+
+  document.getElementById(
+    "endTime"
+  ).value = "";
+
+
+  document.getElementById(
+    "reason"
+  ).value = "";
+
 
   updateIdentityFields();
+
 }
 
 
 // ======================================================
-// 核准借用
+// 核准
 // ======================================================
 
 async function approveBooking(id) {
@@ -610,29 +830,28 @@ async function approveBooking(id) {
     currentUser.role !== "admin"
   ) {
 
-    alert("只有管理員可以核准");
+    alert(
+      "只有管理員可以核准"
+    );
 
     return;
   }
 
 
-  // ====================================================
-  // 選擇機械手臂格位
-  // ====================================================
-
-  const slotInput =
+  const input =
     prompt(
       "請輸入機械手臂格位（1～8）"
     );
 
 
-  if (slotInput === null) {
+  if (input === null) {
+
     return;
   }
 
 
   const slotId =
-    Number(slotInput);
+    Number(input);
 
 
   if (
@@ -649,17 +868,14 @@ async function approveBooking(id) {
   }
 
 
-  // ====================================================
-  // 確認
-  // ====================================================
-
-  const confirmResult =
+  const ok =
     confirm(
-      `確定核准此申請，並使用第 ${slotId} 格嗎？`
+      `確定核准，使用第 ${slotId} 格嗎？`
     );
 
 
-  if (!confirmResult) {
+  if (!ok) {
+
     return;
   }
 
@@ -677,9 +893,10 @@ async function approveBooking(id) {
               "application/json"
           },
 
-          body: JSON.stringify({
-            slotId
-          })
+          body:
+            JSON.stringify({
+              slotId
+            })
         }
       );
 
@@ -701,11 +918,12 @@ async function approveBooking(id) {
 
     alert(
       result.message ||
-      "借用申請已核准"
+      "核准成功"
     );
 
 
     await loadBookings();
+
     await loadArmSlots();
 
 
@@ -721,11 +939,12 @@ async function approveBooking(id) {
     );
 
   }
+
 }
 
 
 // ======================================================
-// 駁回申請
+// 駁回
 // ======================================================
 
 async function rejectBooking(id) {
@@ -735,19 +954,22 @@ async function rejectBooking(id) {
     currentUser.role !== "admin"
   ) {
 
-    alert("只有管理員可以駁回");
+    alert(
+      "只有管理員可以駁回"
+    );
 
     return;
   }
 
 
-  const confirmResult =
+  const ok =
     confirm(
-      "確定要駁回這筆借用申請嗎？"
+      "確定要駁回這筆申請嗎？"
     );
 
 
-  if (!confirmResult) {
+  if (!ok) {
+
     return;
   }
 
@@ -780,11 +1002,12 @@ async function rejectBooking(id) {
 
     alert(
       result.message ||
-      "申請已駁回"
+      "已駁回申請"
     );
 
 
     await loadBookings();
+
     await loadArmSlots();
 
 
@@ -800,6 +1023,7 @@ async function rejectBooking(id) {
     );
 
   }
+
 }
 
 
@@ -814,19 +1038,22 @@ async function completeBooking(id) {
     currentUser.role !== "admin"
   ) {
 
-    alert("只有管理員可以完成借用");
+    alert(
+      "只有管理員可以完成借用"
+    );
 
     return;
   }
 
 
-  const confirmResult =
+  const ok =
     confirm(
       "確定這筆借用已完成嗎？"
     );
 
 
-  if (!confirmResult) {
+  if (!ok) {
+
     return;
   }
 
@@ -850,7 +1077,7 @@ async function completeBooking(id) {
 
       alert(
         result.message ||
-        "完成借用失敗"
+        "完成失敗"
       );
 
       return;
@@ -864,6 +1091,7 @@ async function completeBooking(id) {
 
 
     await loadBookings();
+
     await loadArmSlots();
 
 
@@ -879,6 +1107,7 @@ async function completeBooking(id) {
     );
 
   }
+
 }
 
 
@@ -914,7 +1143,6 @@ async function loadArmSlots() {
       result.slots || [];
 
 
-    // 排序
     armSlots.sort(
       (a, b) =>
         Number(a.slotId) -
@@ -933,22 +1161,29 @@ async function loadArmSlots() {
     );
 
   }
+
 }
 
 
 // ======================================================
-// 顯示機械手臂格位
+// 顯示 8 格機械手臂
 // ======================================================
 
 function renderArmSlots() {
 
+  // ⚠️ 你的 HTML 是 slots
   const container =
     document.getElementById(
-      "armSlots"
+      "slots"
     );
 
 
   if (!container) {
+
+    console.error(
+      "找不到 slots"
+    );
+
     return;
   }
 
@@ -956,54 +1191,61 @@ function renderArmSlots() {
   container.innerHTML = "";
 
 
-  armSlots.forEach(slot => {
+  armSlots.forEach(
+    slot => {
 
-    const div =
-      document.createElement("div");
-
-
-    const isEmpty =
-      slot.status === "空閒";
-
-
-    div.className =
-      isEmpty
-        ? "arm-slot empty"
-        : "arm-slot occupied";
+      const div =
+        document.createElement(
+          "div"
+        );
 
 
-    div.innerHTML = `
-
-      <div class="slot-title">
-        第 ${slot.slotId} 格
-      </div>
-
-      <div class="slot-room">
-        ${escapeHTML(
-          slot.roomName || "-"
-        )}
-      </div>
-
-      <div class="slot-status">
-        ${escapeHTML(
-          slot.status || "-"
-        )}
-      </div>
-
-      <div class="slot-borrower">
-        ${
-          slot.borrower
-            ? escapeHTML(slot.borrower)
-            : "目前空閒"
-        }
-      </div>
-
-    `;
+      const isEmpty =
+        slot.status === "空閒";
 
 
-    container.appendChild(div);
+      div.className =
+        isEmpty
+          ? "arm-slot empty"
+          : "arm-slot occupied";
 
-  });
+
+      div.innerHTML = `
+
+        <div class="slot-title">
+          第 ${slot.slotId} 格
+        </div>
+
+        <div class="slot-room">
+          ${escapeHTML(
+            slot.roomName || "-"
+          )}
+        </div>
+
+        <div class="slot-status">
+          ${escapeHTML(
+            slot.status || "-"
+          )}
+        </div>
+
+        <div class="slot-borrower">
+          ${
+            slot.borrower
+              ? escapeHTML(
+                  slot.borrower
+                )
+              : "目前空閒"
+          }
+        </div>
+
+      `;
+
+
+      container.appendChild(div);
+
+    }
+  );
+
 }
 
 
@@ -1013,19 +1255,43 @@ function renderArmSlots() {
 
 function escapeHTML(value) {
 
-  if (value === null ||
-      value === undefined) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
 
     return "";
+
   }
 
 
   return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+
+    .replace(
+      /</g,
+      "&lt;"
+    )
+
+    .replace(
+      />/g,
+      "&gt;"
+    )
+
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+
+    .replace(
+      /'/g,
+      "&#039;"
+    );
+
 }
 
 
@@ -1056,21 +1322,25 @@ async function logout() {
 
   window.location.href =
     "/index.html";
+
 }
 
 
 // ======================================================
-// 定期更新
+// 每 10 秒自動更新
 // ======================================================
 
-// 每 10 秒更新一次資料
-setInterval(() => {
+setInterval(
+  () => {
 
-  if (currentUser) {
+    if (currentUser) {
 
-    loadBookings();
-    loadArmSlots();
+      loadBookings();
 
-  }
+      loadArmSlots();
 
-}, 10000);
+    }
+
+  },
+  10000
+);
