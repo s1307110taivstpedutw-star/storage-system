@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>臨時教室借還核准</title>
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family:
+        "Microsoft JhengHei",
+        Arial,
+        sans-serif;
+
+      background: #f4f6f8;
+      color: #222;
+    }
+
+    /* =========================
+       側邊欄
+       ========================= */
+
+    .sidebar {
+      position: fixed;
+
+      left: 0;
+      top: 0;
+
+      width: 230px;
+      height: 100vh;
+
+      background: #1f2937;
+      color: white;
+
+      padding-top: 20px;
+    }
+
+    .logo {
+      font-size: 22px;
+      font-weight: bold;
+
+      padding:
+        15px 20px 25px 20px;
+    }
+
+    .menu {
+      display: block;
+
+      padding: 14px 20px;
+
+      color: white;
+      text-decoration: none;
+
+      font-size: 16px;
+    }
+
+    .menu:hover {
+      background: #374151;
+    }
+
+    .menu.active {
+      background: #2563eb;
+    }
+
+    /* =========================
+       主內容
+       ========================= */
+
+    .main {
+      margin-left: 230px;
+      padding: 30px;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .card {
+      background: white;
+
+      border-radius: 12px;
+
+      padding: 25px;
+
+      margin-bottom: 25px;
+
+      box-shadow:
+        0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    /* =========================
+       表單
+       ========================= */
+
+    .form-grid {
+      display: grid;
+
+      grid-template-columns:
+        repeat(2, 1fr);
+
+      gap: 15px;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+
+      margin-bottom: 6px;
+    }
+
+    input,
+    select,
+    textarea {
+
+      width: 100%;
+
+      padding: 10px;
+
+      border:
+        1px solid #d1d5db;
+
+      border-radius: 7px;
+
+      font-size: 15px;
+    }
+
+    textarea {
+      resize: vertical;
+    }
+
+    .full {
+      grid-column:
+        1 / -1;
+    }
+
+    button {
+      border: none;
+
+      padding:
+        10px 18px;
+
+      border-radius: 7px;
+
+      cursor: pointer;
+
+      font-size: 15px;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn-success {
+      background: #16a34a;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #dc2626;
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #6b7280;
+      color: white;
+    }
+
+    /* =========================
+       表格
+       ========================= */
+
+    table {
+      width: 100%;
+
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+
+      border-bottom:
+        1px solid #e5e7eb;
+
+      padding: 12px;
+
+      text-align: left;
+    }
+
+    th {
+      background: #f9fafb;
+    }
+
+    /* =========================
+       狀態
+       ========================= */
+
+    .status {
+      display: inline-block;
+
+      padding:
+        5px 10px;
+
+      border-radius: 20px;
+
+      font-size: 13px;
+    }
+
+    .pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .approved {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .rejected {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .completed {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    /* =========================
+       機械手臂格位
+       ========================= */
+
+    .slots {
+
+      display: grid;
+
+      grid-template-columns:
+        repeat(4, 1fr);
+
+      gap: 15px;
+    }
+
+    .slot {
+
+      border:
+        2px solid #d1d5db;
+
+      border-radius: 10px;
+
+      padding: 18px;
+
+      background: #f9fafb;
+    }
+
+    .slot-title {
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .slot-status {
+      margin-top: 8px;
+      font-weight: bold;
+    }
+
+    .slot.free {
+      border-color: #22c55e;
+    }
+
+    .slot.waiting {
+      border-color: #f59e0b;
+    }
+
+    .slot.borrowing {
+      border-color: #ef4444;
+    }
+
+    @media(max-width: 900px) {
+
+      .sidebar {
+        width: 190px;
+      }
+
+      .main {
+        margin-left: 190px;
+      }
+
+      .slots {
+        grid-template-columns:
+          repeat(2, 1fr);
+      }
+
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <!-- =========================
+       側邊欄
+       ========================= -->
+
+  <div class="sidebar">
+
+    <div class="logo">
+      🔑 倉儲管理系統
+    </div>
+
+    <a class="menu"
+       href="index.html">
+      🏠 系統首頁
+    </a>
+
+    <a class="menu"
+       href="schedule.html">
+      📅 教室課表設置
+    </a>
+
+    <a class="menu"
+       href="#">
+      ❄️ 冷氣卡金額管理
+    </a>
+
+    <a class="menu"
+       href="#">
+      👤 帳號管理
+    </a>
+
+    <a
+      class="menu active"
+      href="temporary.html">
+      🔑 臨時教室借還核准
+    </a>
+
+    <a class="menu"
+       href="#">
+      📡 連線監測
+    </a>
+
+    <a class="menu"
+       href="#">
+      📋 網站日誌
+    </a>
+
+    <a
+      class="menu"
+      href="#"
+      onclick="logout()">
+      🚪 登出系統
+    </a>
+
+  </div>
+
+
+  <!-- =========================
+       主畫面
+       ========================= -->
+
+  <div class="main">
+
+    <h1>
+      🔑 臨時教室借還核准
+    </h1>
+
+    <p id="userInfo">
+      載入中...
+    </p>
+
+
+    <!-- =========================
+         臨時借用申請
+         ========================= -->
+
+    <div class="card">
+
+      <h2>
+        📝 臨時教室借用申請
+      </h2>
+
+      <div class="form-grid">
+
+        <div>
+
+          <label>
+            班級
+          </label>
+
+          <input
+            id="className"
+            type="text"
+            placeholder="例如：控制二甲"
+          >
+
+        </div>
+
+
+        <div>
+
+          <label>
+            教室
+          </label>
+
+          <select id="classroom">
+
+          </select>
+
+        </div>
+
+
+        <div>
+
+          <label>
+            日期
+          </label>
+
+          <input
+            id="date"
+            type="date"
+          >
+
+        </div>
+
+
+        <div>
+
+          <label>
+            開始時間
+          </label>
+
+          <input
+            id="startTime"
+            type="time"
+          >
+
+        </div>
+
+
+        <div>
+
+          <label>
+            結束時間
+          </label>
+
+          <input
+            id="endTime"
+            type="time"
+          >
+
+        </div>
+
+
+        <div class="full">
+
+          <label>
+            借用原因
+          </label>
+
+          <textarea
+            id="reason"
+            rows="3"
+            placeholder="請輸入臨時借用原因">
+          </textarea>
+
+        </div>
+
+
+        <div class="full">
+
+          <button
+            class="btn-primary"
+            onclick="submitBooking()">
+
+            📤 送出申請
+
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================
+         申請列表
+         ========================= -->
+
+    <div class="card">
+
+      <h2>
+        📋 臨時借用申請
+      </h2>
+
+      <div style="overflow-x:auto">
+
+        <table>
+
+          <thead>
+
+            <tr>
+
+              <th>
+                狀態
+              </th>
+
+              <th>
+                班級
+              </th>
+
+              <th>
+                教室
+              </th>
+
+              <th>
+                日期
+              </th>
+
+              <th>
+                時間
+              </th>
+
+              <th>
+                申請人
+              </th>
+
+              <th>
+                機械手臂格位
+              </th>
+
+              <th>
+                操作
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody
+            id="bookingTable">
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+
+
+    <!-- =========================
+         機械手臂
+         ========================= -->
+
+    <div class="card">
+
+      <h2>
+        🤖 機械手臂 8 格
+      </h2>
+
+      <div
+        id="slots"
+        class="slots">
+      </div>
+
+    </div>
+
+  </div>
+
+
+<script>
+
+let currentUser = null;
+let classrooms = [];
+let slots = [];
+
+
+/* =========================
+   HTML 安全處理
+   ========================= */
+
+function escapeHTML(value) {
+
+  if (value === null ||
+      value === undefined) {
+    return "";
+  }
+
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+
+/* =========================
+   初始化
+   ========================= */
+
+async function init() {
+
+  try {
+
+    const meResponse =
+      await fetch("/api/me");
+
+    const me =
+      await meResponse.json();
+
+    if (!me.loggedIn) {
+
+      location.href = "index.html";
+
+      return;
+    }
+
+    currentUser = me.user;
+
+    document.getElementById(
+      "userInfo"
+    ).textContent =
+      `目前登入：${currentUser.name}（${currentUser.role === "admin" ? "管理員" : "教師"}）`;
+
+    await loadClassrooms();
+
+    await loadBookings();
+
+    await loadSlots();
+
+  } catch(error) {
+
+    console.error(error);
+
+    alert("系統載入失敗");
+
+  }
+
+}
+
+
+/* =========================
+   教室
+   ========================= */
+
+async function loadClassrooms() {
+
+  const response =
+    await fetch("/api/classrooms");
+
+  const data =
+    await response.json();
+
+  classrooms =
+    Object.values(data.classrooms)
+      .sort((a,b) => a.id - b.id);
+
+  const select =
+    document.getElementById(
+      "classroom"
+    );
+
+  select.innerHTML = "";
+
+  classrooms.forEach(room => {
+
+    const option =
+      document.createElement("option");
+
+    option.value = room.id;
+
+    option.textContent =
+      `${room.id}. ${room.name}`;
+
+    select.appendChild(option);
+
+  });
+
+}
+
+
+/* =========================
+   送出申請
+   ========================= */
+
+async function submitBooking() {
+
+  const className =
+    document.getElementById(
+      "className"
+    ).value.trim();
+
+  const classroomId =
+    document.getElementById(
+      "classroom"
+    ).value;
+
+  const date =
+    document.getElementById(
+      "date"
+    ).value;
+
+  const startTime =
+    document.getElementById(
+      "startTime"
+    ).value;
+
+  const endTime =
+    document.getElementById(
+      "endTime"
+    ).value;
+
+  const reason =
+    document.getElementById(
+      "reason"
+    ).value.trim();
+
+
+  if (
+    !className ||
+    !date ||
+    !startTime ||
+    !endTime
+  ) {
+
+    alert("請完整填寫資料");
+
+    return;
+  }
+
+
+  try {
+
+    const response =
+      await fetch(
+        "/api/temporary-bookings",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body: JSON.stringify({
+
+            className,
+
+            classroomId,
+
+            date,
+
+            startTime,
+
+            endTime,
+
+            reason
+
+          })
+        }
+      );
+
+    const data =
+      await response.json();
+
+
+    if (!response.ok) {
+
+      alert(
+        data.message ||
+        "申請失敗"
+      );
+
+      return;
+    }
+
+
+    alert(
+      "臨時借用申請已送出，等待管理員審核。"
+    );
+
+
+    document.getElementById(
+      "className"
+    ).value = "";
+
+    document.getElementById(
+      "reason"
+    ).value = "";
+
+    await loadBookings();
+
+  } catch(error) {
+
+    console.error(error);
+
+    alert("無法連線到伺服器");
+
+  }
+
+}
+
+
+/* =========================
+   載入申請
+   ========================= */
+
+async function loadBookings() {
+
+  const response =
+    await fetch(
+      "/api/temporary-bookings"
+    );
+
+  const data =
+    await response.json();
+
+  renderBookings(
+    data.bookings || []
+  );
+
+}
+
+
+/* =========================
+   狀態
+   ========================= */
+
+function getStatusClass(status) {
+
+  switch(status) {
+
+    case "pending":
+      return "pending";
+
+    case "approved":
+      return "approved";
+
+    case "rejected":
+      return "rejected";
+
+    case "completed":
+      return "completed";
+
+    default:
+      return "";
+
+  }
+
+}
+
+
+/* =========================
+   顯示申請
+   ========================= */
+
+function renderBookings(bookings) {
+
+  const tbody =
+    document.getElementById(
+      "bookingTable"
+    );
+
+  tbody.innerHTML = "";
+
+
+  if (bookings.length === 0) {
+
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8">
+          目前沒有臨時借用申請
+        </td>
+      </tr>
+    `;
+
+    return;
+  }
+
+
+  bookings
+    .sort(
+      (a,b) =>
+        b.createdAt.localeCompare(
+          a.createdAt
+        )
+    )
+    .forEach(booking => {
+
+      const tr =
+        document.createElement("tr");
+
+
+      let operation = "";
+
+
+      // 管理員
+      if (
+        currentUser.role === "admin"
+      ) {
+
+        if (
+          booking.status === "pending"
+        ) {
+
+          operation = `
+
+            <button
+              class="btn-success"
+              onclick="approveBooking(${booking.id})">
+
+              核准
+
+            </button>
+
+            <button
+              class="btn-danger"
+              onclick="rejectBooking(${booking.id})">
+
+              拒絕
+
+            </button>
+
+          `;
+
+        }
+
+
+        if (
+          booking.status === "approved"
+        ) {
+
+          operation = `
+
+            <button
+              class="btn-secondary"
+              onclick="completeBooking(${booking.id})">
+
+              完成借還
+
+            </button>
+
+          `;
+
+        }
+
+      }
+
+
+      tr.innerHTML = `
+
+        <td>
+
+          <span
+            class="status ${getStatusClass(booking.status)}">
+
+            ${escapeHTML(
+              booking.statusText
+            )}
+
+          </span>
+
+        </td>
+
+
+        <td>
+          ${escapeHTML(
+            booking.className
+          )}
+        </td>
+
+
+        <td>
+          ${escapeHTML(
+            booking.classroomName
+          )}
+        </td>
+
+
+        <td>
+          ${escapeHTML(
+            booking.date
+          )}
+        </td>
+
+
+        <td>
+          ${escapeHTML(
+            booking.startTime
+          )}
+          ~
+          ${escapeHTML(
+            booking.endTime
+          )}
+        </td>
+
+
+        <td>
+          ${escapeHTML(
+            booking.applicantName
+          )}
+        </td>
+
+
+        <td>
+
+          ${
+            booking.slotId
+              ? `第 ${booking.slotId} 格`
+              : "尚未指定"
+          }
+
+        </td>
+
+
+        <td>
+          ${operation}
+        </td>
+
+      `;
+
+
+      tbody.appendChild(tr);
+
+    });
+
+}
+
+
+/* =========================
+   核准
+   ========================= */
+
+async function approveBooking(id) {
+
+  const slot =
+    prompt(
+      "請輸入機械手臂格位（1～8）"
+    );
+
+  const slotId =
+    Number(slot);
+
+
+  if (
+    !slotId ||
+    slotId < 1 ||
+    slotId > 8
+  ) {
+
+    alert("請輸入 1～8");
+
+    return;
+  }
+
+
+  const response =
+    await fetch(
+      `/api/temporary-bookings/${id}/approve`,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+          slotId
+        })
+      }
+    );
+
+
+  const data =
+    await response.json();
+
+
+  if (!response.ok) {
+
+    alert(
+      data.message ||
+      "核准失敗"
+    );
+
+    return;
+  }
+
+
+  alert(
+    `申請已核准，使用機械手臂第 ${slotId} 格。`
+  );
+
+
+  await loadBookings();
+
+  await loadSlots();
+
+}
+
+
+/* =========================
+   拒絕
+   ========================= */
+
+async function rejectBooking(id) {
+
+  if (
+    !confirm(
+      "確定要拒絕這筆申請嗎？"
+    )
+  ) {
+    return;
+  }
+
+
+  const response =
+    await fetch(
+      `/api/temporary-bookings/${id}/reject`,
+      {
+        method: "POST"
+      }
+    );
+
+
+  const data =
+    await response.json();
+
+
+  if (!response.ok) {
+
+    alert(
+      data.message ||
+      "拒絕失敗"
+    );
+
+    return;
+  }
+
+
+  await loadBookings();
+
+}
+
+
+/* =========================
+   完成
+   ========================= */
+
+async function completeBooking(id) {
+
+  if (
+    !confirm(
+      "確定這筆借還已完成嗎？"
+    )
+  ) {
+    return;
+  }
+
+
+  const response =
+    await fetch(
+      `/api/temporary-bookings/${id}/complete`,
+      {
+        method: "POST"
+      }
+    );
+
+
+  const data =
+    await response.json();
+
+
+  if (!response.ok) {
+
+    alert(
+      data.message ||
+      "操作失敗"
+    );
+
+    return;
+  }
+
+
+  alert(
+    "借還已完成，機械手臂格位已釋放。"
+  );
+
+
+  await loadBookings();
+
+  await loadSlots();
+
+}
+
+
+/* =========================
+   載入機械手臂格位
+   ========================= */
+
+async function loadSlots() {
+
+  const response =
+    await fetch(
+      "/api/arm/slots"
+    );
+
+  const data =
+    await response.json();
+
+  slots =
+    Object.values(data.slots)
+      .sort(
+        (a,b) =>
+          a.slotId - b.slotId
+      );
+
+  renderSlots();
+
+}
+
+
+/* =========================
+   顯示格位
+   ========================= */
+
+function renderSlots() {
+
+  const container =
+    document.getElementById(
+      "slots"
+    );
+
+  container.innerHTML = "";
+
+
+  slots.forEach(slot => {
+
+    let className =
+      "slot free";
+
+
+    if (
+      slot.status === "待借出"
+    ) {
+
+      className =
+        "slot waiting";
+
+    }
+
+
+    if (
+      slot.status === "借用中"
+    ) {
+
+      className =
+        "slot borrowing";
+
+    }
+
+
+    container.innerHTML += `
+
+      <div class="${className}">
+
+        <div class="slot-title">
+
+          第 ${slot.slotId} 格
+
+        </div>
+
+
+        <div>
+          ${escapeHTML(
+            slot.roomName
+          )}
+        </div>
+
+
+        <div>
+          ${escapeHTML(
+            slot.keyName
+          )}
+        </div>
+
+
+        <div class="slot-status">
+
+          狀態：
+          ${escapeHTML(
+            slot.status
+          )}
+
+        </div>
+
+
+        ${
+          slot.borrower
+            ? `
+              <div>
+                班級：
+                ${escapeHTML(
+                  slot.borrower
+                )}
+              </div>
+            `
+            : ""
+        }
+
+
+        ${
+          slot.borrowTime
+            ? `
+              <div>
+                時間：
+                ${escapeHTML(
+                  slot.borrowTime
+                )}
+              </div>
+            `
+            : ""
+        }
+
+      </div>
+
+    `;
+
+  });
+
+}
+
+
+/* =========================
+   登出
+   ========================= */
+
+async function logout() {
+
+  await fetch(
+    "/api/logout",
+    {
+      method: "POST"
+    }
+  );
+
+  location.href =
+    "index.html";
+
+}
+
+
+/* =========================
+   開始
+   ========================= */
+
+init();
+
+</script>
+
+</body>
+</html>
