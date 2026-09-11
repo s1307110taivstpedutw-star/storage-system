@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -233,7 +234,7 @@
 
         <nav class="menu">
 
-            <a href="/schedule.html" class="active">
+            <a href="/schedule.html">
                 🏠 系統首頁
             </a>
 
@@ -241,7 +242,8 @@
                 📅 教室課表設置
             </a>
 
-            <a href="#">
+            <!-- ★ 冷氣卡管理已接上 -->
+            <a href="/ac-card.html">
                 ❄️ 冷氣卡金額管理
             </a>
 
@@ -278,6 +280,7 @@
 
             <div>
                 <h1>📅 教室課表設置</h1>
+
                 <p style="margin-top: 6px; color: #666;">
                     管理 8 間教室的固定課表
                 </p>
@@ -322,9 +325,11 @@
                 id="classroomGrid"
                 class="classroom-grid"
             >
+
                 <div class="classroom-card">
                     載入教室資料中...
                 </div>
+
             </div>
 
         </section>
@@ -367,36 +372,54 @@
 
         try {
 
-            const response = await fetch("/api/me");
+            const response =
+                await fetch("/api/me");
 
             if (!response.ok) {
-                window.location.href = "/index.html";
+
+                window.location.href =
+                    "/index.html";
+
                 return;
             }
 
-            const result = await response.json();
+
+            const result =
+                await response.json();
+
 
             if (!result.loggedIn) {
-                window.location.href = "/index.html";
+
+                window.location.href =
+                    "/index.html";
+
                 return;
             }
 
-            currentUser = result.user;
 
-            document.getElementById("username").textContent =
+            currentUser =
+                result.user;
+
+
+            document.getElementById(
+                "username"
+            ).textContent =
                 currentUser.username;
 
-            document.getElementById("role").textContent =
+
+            document.getElementById(
+                "role"
+            ).textContent =
                 currentUser.role === "admin"
                     ? "管理員"
                     : "老師";
 
 
-            // 管理員才顯示管理功能
-
             if (currentUser.role === "admin") {
 
-                document.getElementById("adminPanel").style.display =
+                document.getElementById(
+                    "adminPanel"
+                ).style.display =
                     "block";
 
             }
@@ -404,9 +427,13 @@
 
             await loadClassrooms();
 
+
         } catch (error) {
 
-            console.error("loadUser 發生錯誤：", error);
+            console.error(
+                "loadUser 發生錯誤：",
+                error
+            );
 
             alert(
                 "系統載入失敗：" +
@@ -427,7 +454,9 @@
         try {
 
             const response =
-                await fetch("/api/classrooms");
+                await fetch(
+                    "/api/classrooms"
+                );
 
 
             if (!response.ok) {
@@ -454,19 +483,6 @@
             }
 
 
-            /*
-             * ★ 這裡是本次修正的重點
-             *
-             * server.js 回傳：
-             *
-             * {
-             *   success: true,
-             *   classrooms: ...
-             * }
-             *
-             * 所以要使用 result.classrooms
-             */
-
             rooms =
                 Object.values(
                     result.classrooms
@@ -483,16 +499,23 @@
                 error
             );
 
+
             document.getElementById(
                 "classroomGrid"
             ).innerHTML = `
 
                 <div class="classroom-card">
 
-                    <h2>❌ 教室資料載入失敗</h2>
+                    <h2>
+                        ❌ 教室資料載入失敗
+                    </h2>
 
-                    <p style="margin-top:10px;color:#666;">
-                        ${escapeHTML(error.message)}
+                    <p
+                        style="margin-top:10px;color:#666;"
+                    >
+                        ${escapeHTML(
+                            error.message
+                        )}
                     </p>
 
                 </div>
@@ -522,7 +545,9 @@
 
                 <div class="classroom-card">
 
-                    <h2>目前沒有教室資料</h2>
+                    <h2>
+                        目前沒有教室資料
+                    </h2>
 
                 </div>
 
@@ -536,7 +561,9 @@
             rooms.map(room => {
 
                 const schedules =
-                    Array.isArray(room.schedules)
+                    Array.isArray(
+                        room.schedules
+                    )
                         ? room.schedules
                         : [];
 
@@ -547,50 +574,56 @@
                 if (schedules.length === 0) {
 
                     scheduleHTML = `
+
                         <div class="schedule-empty">
                             尚未設定課表
                         </div>
+
                     `;
 
                 } else {
 
                     scheduleHTML =
-                        schedules.map(schedule => `
+                        schedules.map(
+                            schedule => `
 
-                            <div class="schedule-item">
+                                <div
+                                    class="schedule-item"
+                                >
 
-                                <strong>
-                                    ${escapeHTML(
-                                        schedule.className ||
-                                        schedule.class ||
-                                        "未設定班級"
-                                    )}
-                                </strong>
+                                    <strong>
+                                        ${escapeHTML(
+                                            schedule.className ||
+                                            schedule.class ||
+                                            "未設定班級"
+                                        )}
+                                    </strong>
 
-                                <div>
-                                    星期
-                                    ${escapeHTML(
-                                        schedule.weekday ||
-                                        schedule.day ||
-                                        ""
-                                    )}
+                                    <div>
+                                        星期
+                                        ${escapeHTML(
+                                            schedule.weekday ||
+                                            schedule.day ||
+                                            ""
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        ${escapeHTML(
+                                            schedule.startTime ||
+                                            ""
+                                        )}
+                                        -
+                                        ${escapeHTML(
+                                            schedule.endTime ||
+                                            ""
+                                        )}
+                                    </div>
+
                                 </div>
 
-                                <div>
-                                    ${escapeHTML(
-                                        schedule.startTime ||
-                                        ""
-                                    )}
-                                    -
-                                    ${escapeHTML(
-                                        schedule.endTime ||
-                                        ""
-                                    )}
-                                </div>
-
-                            </div>
-
-                        `).join("");
+                            `
+                        ).join("");
 
                 }
 
@@ -599,12 +632,17 @@
 
                     <div class="classroom-card">
 
-                        <div class="classroom-header">
+                        <div
+                            class="classroom-header"
+                        >
 
                             <h2>
                                 🏫
-                                ${escapeHTML(room.name)}
+                                ${escapeHTML(
+                                    room.name
+                                )}
                             </h2>
+
 
                             ${
                                 currentUser &&
@@ -614,12 +652,14 @@
 
                                     <button
                                         class="rename-btn"
-                                        onclick="renameClassroom(${room.id})"
+                                        onclick="renameClassroom(
+                                            ${room.id}
+                                        )"
                                     >
                                         修改名稱
                                     </button>
 
-                                  `
+                                `
 
                                 : ""
                             }
@@ -642,12 +682,14 @@
 
                                 <button
                                     class="add-schedule-btn"
-                                    onclick="addSchedule(${room.id})"
+                                    onclick="addSchedule(
+                                        ${room.id}
+                                    )"
                                 >
                                     ＋ 新增課表
                                 </button>
 
-                              `
+                            `
 
                             : ""
                         }
@@ -669,12 +711,16 @@
 
         const room =
             rooms.find(
-                r => Number(r.id) === Number(id)
+                r =>
+                    Number(r.id) ===
+                    Number(id)
             );
 
 
         if (!room) {
+
             alert("找不到教室");
+
             return;
         }
 
@@ -687,6 +733,7 @@
 
 
         if (!newName) {
+
             return;
         }
 
@@ -725,7 +772,10 @@
             }
 
 
-            alert("教室名稱修改成功");
+            alert(
+                "教室名稱修改成功"
+            );
+
 
             await loadClassrooms();
 
@@ -751,9 +801,13 @@
     async function addSchedule(id) {
 
         const className =
-            prompt("請輸入班級名稱：");
+            prompt(
+                "請輸入班級名稱："
+            );
+
 
         if (!className) {
+
             return;
         }
 
@@ -763,7 +817,9 @@
                 "請輸入星期：\n例如：一、二、三、四、五"
             );
 
+
         if (!weekday) {
+
             return;
         }
 
@@ -773,7 +829,9 @@
                 "請輸入開始時間：\n例如：08:00"
             );
 
+
         if (!startTime) {
+
             return;
         }
 
@@ -783,7 +841,9 @@
                 "請輸入結束時間：\n例如：09:00"
             );
 
+
         if (!endTime) {
+
             return;
         }
 
@@ -828,7 +888,10 @@
             }
 
 
-            alert("課表新增成功");
+            alert(
+                "課表新增成功"
+            );
+
 
             await loadClassrooms();
 
