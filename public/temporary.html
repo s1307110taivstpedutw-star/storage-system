@@ -30,52 +30,39 @@
       🔑 倉儲管理系統
     </div>
 
-    <a
-      class="menu"
-      href="/schedule.html">
+    <a class="menu" href="/schedule.html">
       🏠 系統首頁
     </a>
 
-    <a
-      class="menu"
-      href="/schedule.html">
+    <a class="menu" href="/schedule.html">
       📅 教室課表設置
     </a>
 
-    <a
-      class="menu"
-      href="#">
+    <a class="menu" href="#">
       ❄️ 冷氣卡金額管理
     </a>
 
-    <a
-      class="menu"
-      href="#">
+    <a class="menu" href="#">
       👤 帳號管理
     </a>
 
-    <a
-      class="menu active"
-      href="/temporary.html">
+    <a class="menu active" href="/temporary.html">
       🔑 臨時教室借還核准
     </a>
 
-    <a
-      class="menu"
-      href="#">
+    <a class="menu" href="#">
       📡 連線監測
     </a>
 
-    <a
-      class="menu"
-      href="#">
+    <a class="menu" href="#">
       📋 網站日誌
     </a>
 
     <a
       class="menu"
       href="#"
-      onclick="logout(); return false;">
+      onclick="logout(); return false;"
+    >
       🚪 登出系統
     </a>
 
@@ -109,6 +96,35 @@
 
       <div class="form-grid">
 
+        <!-- 身分 -->
+
+        <div>
+
+          <label for="identity">
+            身分
+          </label>
+
+          <select id="identity">
+
+            <option value="">
+              請選擇身分
+            </option>
+
+            <option value="teacher">
+              老師
+            </option>
+
+            <option value="student">
+              學生
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <!-- 班級 -->
+
         <div>
 
           <label for="className">
@@ -124,6 +140,42 @@
         </div>
 
 
+        <!-- 姓名 -->
+
+        <div>
+
+          <label for="applicantName">
+            姓名
+          </label>
+
+          <input
+            id="applicantName"
+            type="text"
+            placeholder="請輸入姓名"
+          >
+
+        </div>
+
+
+        <!-- 學號 -->
+
+        <div>
+
+          <label for="studentId">
+            學號
+          </label>
+
+          <input
+            id="studentId"
+            type="text"
+            placeholder="例如：91123456"
+          >
+
+        </div>
+
+
+        <!-- 教室 -->
+
         <div>
 
           <label for="classroom">
@@ -131,10 +183,49 @@
           </label>
 
           <select id="classroom">
+
+            <option value="">
+              請選擇教室
+            </option>
+
+            <option value="1">
+              1 號教室
+            </option>
+
+            <option value="2">
+              2 號教室
+            </option>
+
+            <option value="3">
+              3 號教室
+            </option>
+
+            <option value="4">
+              4 號教室
+            </option>
+
+            <option value="5">
+              5 號教室
+            </option>
+
+            <option value="6">
+              6 號教室
+            </option>
+
+            <option value="7">
+              7 號教室
+            </option>
+
+            <option value="8">
+              8 號教室
+            </option>
+
           </select>
 
         </div>
 
+
+        <!-- 日期 -->
 
         <div>
 
@@ -150,6 +241,8 @@
         </div>
 
 
+        <!-- 開始時間 -->
+
         <div>
 
           <label for="startTime">
@@ -163,6 +256,8 @@
 
         </div>
 
+
+        <!-- 結束時間 -->
 
         <div>
 
@@ -178,6 +273,8 @@
         </div>
 
 
+        <!-- 原因 -->
+
         <div class="full">
 
           <label for="reason">
@@ -187,19 +284,21 @@
           <textarea
             id="reason"
             rows="3"
-            placeholder="請輸入臨時借用原因"></textarea>
+            placeholder="請輸入臨時借用原因"
+          ></textarea>
 
         </div>
 
+
+        <!-- 送出 -->
 
         <div class="full">
 
           <button
             class="btn-primary"
-            onclick="submitBooking()">
-
+            onclick="submitBooking()"
+          >
             📤 送出申請
-
           </button>
 
         </div>
@@ -229,15 +328,19 @@
 
               <th>狀態</th>
 
+              <th>身分</th>
+
               <th>班級</th>
+
+              <th>姓名</th>
+
+              <th>學號</th>
 
               <th>教室</th>
 
               <th>日期</th>
 
               <th>時間</th>
-
-              <th>申請人</th>
 
               <th>機械手臂格位</th>
 
@@ -269,15 +372,14 @@
 
       <div
         id="slots"
-        class="slots">
+        class="slots"
+      >
       </div>
 
     </div>
 
   </div>
 
-
-  <!-- JavaScript -->
 
   <script src="/js/temporary.js"></script>
 
