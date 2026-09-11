@@ -24,9 +24,14 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "arm_key_secret_123",
+    secret:
+      process.env.SESSION_SECRET ||
+      "arm_key_secret_123",
+
     resave: false,
+
     saveUninitialized: false,
+
     cookie: {
       secure: false,
       maxAge: 8 * 60 * 60 * 1000
@@ -38,7 +43,11 @@ app.use(
 // 前端靜態檔案
 // ================================
 
-app.use(express.static(path.join(__dirname, "..", "public")));
+app.use(
+  express.static(
+    path.join(__dirname, "..", "public")
+  )
+);
 
 // ================================
 // API 路由
@@ -61,6 +70,40 @@ app.use("/api", acCardRouter);
 
 // 帳號管理
 app.use("/api", accountsRouter);
+
+// ================================
+// Render Keep Alive
+// ================================
+
+app.get("/ping", (req, res) => {
+  res.send("pong");
+});
+
+// ================================
+// 首頁
+// ================================
+
+app.get("/", (req, res) => {
+  res.sendFile(
+    path.join(
+      __dirname,
+      "..",
+      "public",
+      "index.html"
+    )
+  );
+});
+
+// ================================
+// API 404
+// ================================
+
+app.use("/api", (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "找不到指定的 API"
+  });
+});
 
 // ================================
 // 匯出 App
