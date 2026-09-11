@@ -2,6 +2,7 @@
 <html lang="zh-TW">
 
 <head>
+
   <meta charset="UTF-8">
 
   <meta name="viewport"
@@ -17,21 +18,27 @@
 
     body {
       margin: 0;
+
       font-family:
         "Segoe UI",
         "Microsoft JhengHei",
         Arial,
         sans-serif;
+
       background: #f4f6f9;
+
       color: #333;
     }
+
 
     /* =========================
        側欄
        ========================= */
 
     .sidebar {
+
       position: fixed;
+
       left: 0;
       top: 0;
 
@@ -39,63 +46,94 @@
       height: 100vh;
 
       background: #1f2937;
+
       color: white;
 
       padding: 20px 15px;
 
       overflow-y: auto;
+
     }
+
 
     .system-title {
+
       font-size: 20px;
+
       font-weight: bold;
 
-      padding: 10px 8px 25px;
+      padding:
+        10px 8px 25px;
 
       line-height: 1.5;
+
     }
+
 
     .menu-title {
+
       font-size: 12px;
+
       color: #9ca3af;
 
-      padding: 10px 10px 6px;
+      padding:
+        10px 10px 6px;
+
     }
 
+
     .menu-item {
+
       display: block;
 
       width: 100%;
 
       padding: 12px 14px;
+
       margin-bottom: 5px;
 
       border-radius: 7px;
 
       color: #e5e7eb;
+
       text-decoration: none;
 
       cursor: pointer;
 
       transition: 0.2s;
+
     }
+
 
     .menu-item:hover {
+
       background: #374151;
+
     }
+
 
     .menu-item.active {
+
       background: #2563eb;
+
       color: white;
+
     }
+
 
     .logout-menu {
+
       margin-top: 25px;
+
       background: #dc3545;
+
     }
 
+
     .logout-menu:hover {
+
       background: #b91c1c;
+
     }
 
 
@@ -104,28 +142,41 @@
        ========================= */
 
     .main {
+
       margin-left: 240px;
 
       padding: 30px;
 
       min-height: 100vh;
+
     }
 
+
     .top-bar {
+
       display: flex;
 
-      justify-content: space-between;
+      justify-content:
+        space-between;
+
       align-items: center;
 
       margin-bottom: 25px;
+
     }
+
 
     .page-title {
+
       margin: 0;
+
       font-size: 28px;
+
     }
 
+
     .user-info {
+
       background: white;
 
       padding: 10px 15px;
@@ -133,7 +184,9 @@
       border-radius: 8px;
 
       box-shadow:
-        0 2px 5px rgba(0,0,0,0.08);
+        0 2px 5px
+        rgba(0,0,0,0.08);
+
     }
 
 
@@ -142,6 +195,7 @@
        ========================= */
 
     .card {
+
       background: white;
 
       border-radius: 10px;
@@ -151,7 +205,9 @@
       margin-bottom: 20px;
 
       box-shadow:
-        0 2px 6px rgba(0,0,0,0.08);
+        0 2px 6px
+        rgba(0,0,0,0.08);
+
     }
 
 
@@ -160,6 +216,7 @@
        ========================= */
 
     .room-tabs {
+
       display: grid;
 
       grid-template-columns:
@@ -168,10 +225,14 @@
       gap: 10px;
 
       margin-bottom: 25px;
+
     }
 
+
     .room-tab {
-      border: 1px solid #d1d5db;
+
+      border:
+        1px solid #d1d5db;
 
       background: #f9fafb;
 
@@ -184,18 +245,26 @@
       font-size: 15px;
 
       transition: 0.2s;
+
     }
+
 
     .room-tab:hover {
+
       background: #e5e7eb;
+
     }
 
+
     .room-tab.active {
+
       background: #2563eb;
 
       color: white;
 
-      border-color: #2563eb;
+      border-color:
+        #2563eb;
+
     }
 
 
@@ -204,18 +273,25 @@
        ========================= */
 
     .room-header {
+
       display: flex;
 
-      justify-content: space-between;
+      justify-content:
+        space-between;
+
       align-items: center;
 
       margin-bottom: 20px;
+
     }
 
+
     .room-name {
+
       font-size: 22px;
 
       font-weight: bold;
+
     }
 
 
@@ -224,6 +300,7 @@
        ========================= */
 
     button {
+
       border: none;
 
       border-radius: 6px;
@@ -233,30 +310,50 @@
       cursor: pointer;
 
       font-size: 14px;
+
     }
+
 
     .btn-primary {
+
       background: #2563eb;
+
       color: white;
+
     }
+
 
     .btn-primary:hover {
+
       background: #1d4ed8;
+
     }
+
 
     .btn-danger {
+
       background: #dc3545;
+
       color: white;
+
     }
+
 
     .btn-warning {
+
       background: #f59e0b;
+
       color: white;
+
     }
 
+
     .btn-secondary {
+
       background: #6b7280;
+
       color: white;
+
     }
 
 
@@ -265,26 +362,39 @@
        ========================= */
 
     table {
+
       width: 100%;
 
-      border-collapse: collapse;
+      border-collapse:
+        collapse;
+
     }
+
 
     th,
     td {
-      border-bottom: 1px solid #e5e7eb;
+
+      border-bottom:
+        1px solid #e5e7eb;
 
       padding: 12px;
 
       text-align: center;
+
     }
+
 
     th {
+
       background: #f3f4f6;
+
     }
 
+
     tr:hover {
+
       background: #f9fafb;
+
     }
 
 
@@ -293,27 +403,36 @@
        ========================= */
 
     .admin-panel {
+
       background: #f8fafc;
 
-      border: 1px solid #e5e7eb;
+      border:
+        1px solid #e5e7eb;
 
       border-radius: 8px;
 
       padding: 18px;
 
       margin-top: 20px;
+
     }
 
+
     .admin-buttons {
+
       display: flex;
 
       gap: 10px;
 
       flex-wrap: wrap;
+
     }
 
+
     .hidden {
+
       display: none !important;
+
     }
 
 
@@ -322,11 +441,13 @@
        ========================= */
 
     .empty {
+
       text-align: center;
 
       padding: 40px 20px;
 
       color: #9ca3af;
+
     }
 
 
@@ -337,21 +458,28 @@
     @media (max-width: 900px) {
 
       .sidebar {
+
         width: 190px;
+
       }
 
       .main {
+
         margin-left: 190px;
+
       }
 
       .room-tabs {
+
         grid-template-columns:
           repeat(2, 1fr);
+
       }
 
     }
 
   </style>
+
 </head>
 
 
@@ -365,8 +493,11 @@
   <aside class="sidebar">
 
     <div class="system-title">
+
       🔐 鑰匙與冷氣卡<br>
+
       倉儲管理系統
+
     </div>
 
 
@@ -415,9 +546,12 @@
     </a>
 
 
-    <a class="menu-item logout-menu"
-       onclick="logout()">
+    <a
+      class="menu-item logout-menu"
+      onclick="logout()">
+
       🚪 登出系統
+
     </a>
 
   </aside>
@@ -441,6 +575,7 @@
       <div class="user-info">
 
         👤
+
         <span id="username">
           載入中...
         </span>
@@ -478,13 +613,14 @@
       </div>
 
 
-      <div
-        class="room-header">
+      <div class="room-header">
 
         <div
           class="room-name"
           id="currentRoomName">
+
           教室 1
+
         </div>
 
 
@@ -507,7 +643,9 @@
       <div id="scheduleArea">
 
         <div class="empty">
-          目前沒有課表資料
+
+          資料載入中...
+
         </div>
 
       </div>
@@ -559,7 +697,7 @@
           <input
             type="file"
             id="csvFile"
-            accept=".csv"
+            accept=".csv,.xlsx,.xls"
             style="display:none"
             onchange="importCSV(event)">
 
@@ -569,48 +707,28 @@
 
     </div>
 
-
   </main>
 
 
 
 <script>
 
-  /* =====================================
-     系統資料
-     ===================================== */
+
+  // =====================================
+  // 系統資料
+  // =====================================
 
   let currentUser = null;
 
   let currentRoom = 1;
 
-
-  /*
-   * 先建立八間教室
-   *
-   * 後續會由伺服器真正儲存。
-   */
-
   let rooms = [];
 
-  for (let i = 1; i <= 8; i++) {
-
-    rooms.push({
-
-      id: i,
-
-      name: `教室 ${i}`,
-
-      schedules: []
-
-    });
-
-  }
 
 
-  /* =====================================
-     取得登入資訊
-     ===================================== */
+  // =====================================
+  // 載入登入者
+  // =====================================
 
   async function loadUser() {
 
@@ -619,12 +737,14 @@
       const response =
         await fetch('/api/me');
 
+
       if (!response.ok) {
 
         window.location.href =
           '/index.html';
 
         return;
+
       }
 
 
@@ -650,35 +770,40 @@
           : '老師';
 
 
-      /*
-       * 只有管理員可以看到
-       * 管理功能。
-       */
+      // ---------------------------------
+      // 管理員功能
+      // ---------------------------------
 
       if (
         currentUser.role === 'admin'
       ) {
 
         document
-          .getElementById('adminPanel')
-          .classList.remove('hidden');
+          .getElementById(
+            'adminPanel'
+          )
+          .classList.remove(
+            'hidden'
+          );
 
-      }
-
-      else {
+      } else {
 
         document
           .getElementById(
             'renameRoomButton'
           )
-          .classList.add('hidden');
+          .classList.add(
+            'hidden'
+          );
 
       }
 
 
-      renderRoomTabs();
+      // ---------------------------------
+      // 從伺服器取得真正資料
+      // ---------------------------------
 
-      renderRoom();
+      await loadClassrooms();
 
 
     } catch (error) {
@@ -694,9 +819,106 @@
   }
 
 
-  /* =====================================
-     建立八間教室按鈕
-     ===================================== */
+
+  // =====================================
+  // 從 server 取得 8 間教室
+  // =====================================
+
+  async function loadClassrooms() {
+
+    try {
+
+      const response =
+        await fetch(
+          '/api/classrooms'
+        );
+
+
+      if (!response.ok) {
+
+        throw new Error(
+          '取得教室資料失敗'
+        );
+
+      }
+
+
+      const result =
+        await response.json();
+
+
+      if (!result.success) {
+
+        throw new Error(
+          result.message ||
+          '取得資料失敗'
+        );
+
+      }
+
+
+      /*
+       * server 回傳的是：
+       *
+       * {
+       *   1: {...},
+       *   2: {...},
+       *   ...
+       * }
+       *
+       * 轉成前端陣列。
+       */
+
+      rooms =
+        Object.values(
+          result.data
+        );
+
+
+      /*
+       * 確保按照 1～8 排列。
+       */
+
+      rooms.sort(
+        (a, b) =>
+          a.id - b.id
+      );
+
+
+      renderRoomTabs();
+
+      renderRoom();
+
+
+    } catch (error) {
+
+      console.error(error);
+
+      document.getElementById(
+        'scheduleArea'
+      ).innerHTML = `
+
+        <div class="empty">
+
+          ❌ 無法取得教室資料<br><br>
+
+          ${escapeHTML(
+            error.message
+          )}
+
+        </div>
+
+      `;
+
+    }
+
+  }
+
+
+
+  // =====================================
+  // 建立教室按鈕
+  // =====================================
 
   function renderRoomTabs() {
 
@@ -709,64 +931,78 @@
     tabs.innerHTML = '';
 
 
-    rooms.forEach(room => {
+    rooms.forEach(
+      room => {
 
-      const button =
-        document.createElement('button');
+        const button =
+          document.createElement(
+            'button'
+          );
 
 
-      button.className =
-        'room-tab';
+        button.className =
+          'room-tab';
 
 
-      if (
-        room.id === currentRoom
-      ) {
+        if (
+          room.id === currentRoom
+        ) {
 
-        button.classList.add(
-          'active'
+          button.classList.add(
+            'active'
+          );
+
+        }
+
+
+        button.textContent =
+          room.name;
+
+
+        button.onclick =
+          () => {
+
+            currentRoom =
+              room.id;
+
+
+            renderRoomTabs();
+
+            renderRoom();
+
+          };
+
+
+        tabs.appendChild(
+          button
         );
 
       }
-
-
-      button.textContent =
-        room.name;
-
-
-      button.onclick =
-        () => {
-
-          currentRoom =
-            room.id;
-
-          renderRoomTabs();
-
-          renderRoom();
-
-        };
-
-
-      tabs.appendChild(button);
-
-    });
+    );
 
   }
 
 
-  /* =====================================
-     顯示目前教室
-     ===================================== */
+
+  // =====================================
+  // 顯示目前教室
+  // =====================================
 
   function renderRoom() {
 
     const room =
       rooms.find(
-        r => r.id === currentRoom
+        r =>
+          Number(r.id) ===
+          Number(currentRoom)
       );
 
 
-    if (!room) return;
+    if (!room) {
+
+      return;
+
+    }
 
 
     document.getElementById(
@@ -781,19 +1017,26 @@
       );
 
 
-    /*
-     * 沒有課表
-     */
+    const schedules =
+      room.schedules || [];
+
+
+    // ---------------------------------
+    // 沒有課表
+    // ---------------------------------
 
     if (
-      room.schedules.length === 0
+      schedules.length === 0
     ) {
 
       area.innerHTML = `
 
         <div class="empty">
 
-          目前「${room.name}」
+          目前「${escapeHTML(
+            room.name
+          )}」
+
           尚未建立課表資料。
 
         </div>
@@ -805,9 +1048,9 @@
     }
 
 
-    /*
-     * 有課表
-     */
+    // ---------------------------------
+    // 課表
+    // ---------------------------------
 
     let html = `
 
@@ -817,10 +1060,14 @@
 
           <tr>
 
-            <th>教師編號</th>
+            <th>班級</th>
+
             <th>星期</th>
-            <th>借用時間</th>
-            <th>歸還時間</th>
+
+            <th>開始時間</th>
+
+            <th>結束時間</th>
+
             <th>操作</th>
 
           </tr>
@@ -832,27 +1079,35 @@
     `;
 
 
-    room.schedules.forEach(
-      (schedule, index) => {
+    schedules.forEach(
+      schedule => {
 
         html += `
 
           <tr>
 
             <td>
-              ${schedule.teacherId}
+              ${escapeHTML(
+                schedule.className
+              )}
             </td>
 
             <td>
-              ${schedule.weekday}
+              ${escapeHTML(
+                schedule.weekday
+              )}
             </td>
 
             <td>
-              ${schedule.borrowTime}
+              ${escapeHTML(
+                schedule.startTime
+              )}
             </td>
 
             <td>
-              ${schedule.returnTime}
+              ${escapeHTML(
+                schedule.endTime
+              )}
             </td>
 
             <td>
@@ -860,17 +1115,20 @@
               ${
                 currentUser &&
                 currentUser.role === 'admin'
+
                 ?
 
                 `<button
-                   class="btn-danger"
-                   onclick="deleteSchedule(${index})">
-                   刪除
-                 </button>`
+                  class="btn-danger"
+                  onclick="deleteSchedule('${escapeAttribute(schedule.id)}')">
+
+                  刪除
+
+                </button>`
 
                 :
 
-                `—`
+                '—'
 
               }
 
@@ -899,11 +1157,12 @@
   }
 
 
-  /* =====================================
-     修改教室名稱
-     ===================================== */
 
-  function renameRoom() {
+  // =====================================
+  // 修改教室名稱
+  // =====================================
+
+  async function renameRoom() {
 
     if (
       !currentUser ||
@@ -917,8 +1176,17 @@
 
     const room =
       rooms.find(
-        r => r.id === currentRoom
+        r =>
+          Number(r.id) ===
+          Number(currentRoom)
       );
+
+
+    if (!room) {
+
+      return;
+
+    }
 
 
     const newName =
@@ -950,22 +1218,76 @@
     }
 
 
-    room.name =
-      newName.trim();
+    try {
+
+      const response =
+        await fetch(
+          `/api/classrooms/${currentRoom}`,
+          {
+
+            method: 'POST',
+
+            headers: {
+
+              'Content-Type':
+                'application/json'
+
+            },
+
+            body:
+              JSON.stringify({
+
+                name:
+                  newName.trim()
+
+              })
+
+          }
+        );
 
 
-    renderRoomTabs();
+      const result =
+        await response.json();
 
-    renderRoom();
+
+      if (!response.ok) {
+
+        throw new Error(
+          result.message ||
+          '修改失敗'
+        );
+
+      }
+
+
+      alert(
+        '教室名稱修改成功！'
+      );
+
+
+      await loadClassrooms();
+
+
+    } catch (error) {
+
+      console.error(error);
+
+      alert(
+        '修改失敗：' +
+        error.message
+      );
+
+    }
 
   }
 
 
-  /* =====================================
-     新增課表
-     ===================================== */
 
-  function addSchedule() {
+  // =====================================
+  // 新增課表
+  // =====================================
+
+  async function addSchedule() {
 
     if (
       !currentUser ||
@@ -977,83 +1299,197 @@
     }
 
 
-    const teacherId =
+    const className =
       prompt(
-        '請輸入教師編號（1～8）：'
+        '請輸入班級：\n例如：控制二甲'
       );
 
 
     if (
-      teacherId === null
-    ) return;
+      className === null
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      className.trim() === ''
+    ) {
+
+      alert(
+        '班級不能為空白。'
+      );
+
+      return;
+
+    }
 
 
     const weekday =
       prompt(
-        '請輸入星期（例如：星期一）：'
+        '請輸入星期：\n例如：星期一'
       );
 
 
     if (
       weekday === null
-    ) return;
+    ) {
+
+      return;
+
+    }
 
 
-    const borrowTime =
+    if (
+      weekday.trim() === ''
+    ) {
+
+      alert(
+        '星期不能為空白。'
+      );
+
+      return;
+
+    }
+
+
+    const startTime =
       prompt(
-        '請輸入借用時間（例如：08:00）：'
+        '請輸入開始時間：\n例如：08:00'
       );
 
 
     if (
-      borrowTime === null
-    ) return;
+      startTime === null
+    ) {
+
+      return;
+
+    }
 
 
-    const returnTime =
+    const endTime =
       prompt(
-        '請輸入歸還時間（例如：10:00）：'
+        '請輸入結束時間：\n例如：10:00'
       );
 
 
     if (
-      returnTime === null
-    ) return;
+      endTime === null
+    ) {
+
+      return;
+
+    }
 
 
-    const room =
-      rooms.find(
-        r => r.id === currentRoom
+    if (
+      !startTime.trim() ||
+      !endTime.trim()
+    ) {
+
+      alert(
+        '時間不能為空白。'
+      );
+
+      return;
+
+    }
+
+
+    // ---------------------------------
+    // 傳給 server
+    // ---------------------------------
+
+    try {
+
+      const response =
+        await fetch(
+          `/api/classrooms/${currentRoom}/schedules`,
+          {
+
+            method: 'POST',
+
+            headers: {
+
+              'Content-Type':
+                'application/json'
+
+            },
+
+            body:
+              JSON.stringify({
+
+                className:
+                  className.trim(),
+
+                weekday:
+                  weekday.trim(),
+
+                startTime:
+                  startTime.trim(),
+
+                endTime:
+                  endTime.trim()
+
+              })
+
+          }
+        );
+
+
+      const result =
+        await response.json();
+
+
+      if (!response.ok) {
+
+        throw new Error(
+          result.message ||
+          '新增課表失敗'
+        );
+
+      }
+
+
+      alert(
+        '課表新增成功！'
       );
 
 
-    room.schedules.push({
+      /*
+       * 重新從 server 取得資料。
+       *
+       * 不使用瀏覽器暫存。
+       */
 
-      teacherId:
-        teacherId.trim(),
-
-      weekday:
-        weekday.trim(),
-
-      borrowTime:
-        borrowTime.trim(),
-
-      returnTime:
-        returnTime.trim()
-
-    });
+      await loadClassrooms();
 
 
-    renderRoom();
+    } catch (error) {
+
+      console.error(error);
+
+      alert(
+        '新增失敗：' +
+        error.message
+      );
+
+    }
 
   }
 
 
-  /* =====================================
-     刪除課表
-     ===================================== */
 
-  function deleteSchedule(index) {
+  // =====================================
+  // 刪除課表
+  // =====================================
+
+  async function deleteSchedule(
+    scheduleId
+  ) {
 
     if (
       !currentUser ||
@@ -1076,28 +1512,66 @@
     }
 
 
-    const room =
-      rooms.find(
-        r => r.id === currentRoom
+    try {
+
+      const response =
+        await fetch(
+
+          `/api/classrooms/${currentRoom}/schedules/${encodeURIComponent(scheduleId)}`,
+
+          {
+
+            method: 'DELETE'
+
+          }
+
+        );
+
+
+      const result =
+        await response.json();
+
+
+      if (!response.ok) {
+
+        throw new Error(
+          result.message ||
+          '刪除失敗'
+        );
+
+      }
+
+
+      alert(
+        '課表已刪除！'
       );
 
 
-    room.schedules.splice(
-      index,
-      1
-    );
+      await loadClassrooms();
 
 
-    renderRoom();
+    } catch (error) {
+
+      console.error(error);
+
+      alert(
+        '刪除失敗：' +
+        error.message
+      );
+
+    }
 
   }
 
 
-  /* =====================================
-     CSV 匯入
-     ===================================== */
 
-  function importCSV(event) {
+  // =====================================
+  // CSV 匯入
+  // =====================================
+
+  async function importCSV(
+    event
+  ) {
 
     if (
       !currentUser ||
@@ -1113,51 +1587,101 @@
       event.target.files[0];
 
 
-    if (!file) return;
+    if (!file) {
+
+      return;
+
+    }
 
 
-    alert(
-      'CSV 已選取。下一階段會將 CSV 正式寫入伺服器資料庫。'
+    const formData =
+      new FormData();
+
+
+    formData.append(
+      'file',
+      file
     );
 
 
-    /*
-     * 目前先不直接寫入。
-     *
-     * 下一階段會接：
-     *
-     * CSV
-     * ↓
-     * Server
-     * ↓
-     * 課表資料
-     *
-     * CSV 格式：
-     *
-     * 教師編號,教室,星期幾,借用時間,歸還時間
-     */
+    try {
 
+      const response =
+        await fetch(
+          '/api/classrooms/import-csv',
+          {
+
+            method: 'POST',
+
+            body:
+              formData
+
+          }
+        );
+
+
+      const result =
+        await response.json();
+
+
+      if (!response.ok) {
+
+        throw new Error(
+          result.message ||
+          'CSV 匯入失敗'
+        );
+
+      }
+
+
+      alert(
+        result.message
+      );
+
+
+      await loadClassrooms();
+
+
+    } catch (error) {
+
+      console.error(error);
+
+      alert(
+        'CSV 匯入失敗：' +
+        error.message
+      );
+
+    }
+
+
+    // 清除檔案選擇
     event.target.value = '';
 
   }
 
 
-  /* =====================================
-     匯出課表
-     * ===================================== */
+
+  // =====================================
+  // 匯出課表
+  // =====================================
 
   function exportSchedule() {
 
-    alert(
-      '課表匯出功能下一階段接上伺服器。'
-    );
+    /*
+     * 直接讓瀏覽器下載 server
+     * 產生的 CSV。
+     */
+
+    window.location.href =
+      '/api/classrooms/export-csv';
 
   }
 
 
-  /* =====================================
-     登出
-     * ===================================== */
+
+  // =====================================
+  // 登出
+  // =====================================
 
   async function logout() {
 
@@ -1197,9 +1721,73 @@
   }
 
 
-  /* =====================================
-     啟動
-     * ===================================== */
+
+  // =====================================
+  // 防止 HTML 注入
+  // =====================================
+
+  function escapeHTML(
+    value
+  ) {
+
+    return String(
+      value ?? ''
+    )
+
+      .replace(
+        /&/g,
+        '&amp;'
+      )
+
+      .replace(
+        /</g,
+        '&lt;'
+      )
+
+      .replace(
+        />/g,
+        '&gt;'
+      )
+
+      .replace(
+        /"/g,
+        '&quot;'
+      )
+
+      .replace(
+        /'/g,
+        '&#039;'
+      );
+
+  }
+
+
+
+  function escapeAttribute(
+    value
+  ) {
+
+    return String(
+      value ?? ''
+    )
+
+      .replace(
+        /\\/g,
+        '\\\\'
+      )
+
+      .replace(
+        /'/g,
+        "\\'"
+      );
+
+  }
+
+
+
+  // =====================================
+  // 啟動
+  // =====================================
 
   loadUser();
 
