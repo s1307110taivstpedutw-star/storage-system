@@ -1,12 +1,8 @@
-// ======================================================
-// 新增臨時借用申請
-// ======================================================
-
-app.post(
-  "/api/temporary-bookings",
-  requireLogin,
-  (req, res) => {
-
+// ===============================
+// 臨時教室借用申請
+// ===============================
+app.post("/api/temporary-bookings", requireLogin, (req, res) => {
+  try {
     const {
       identity,
       className,
@@ -19,260 +15,171 @@ app.post(
       reason
     } = req.body;
 
+    // -------------------------------
+    // 基本資料驗證
+    // -------------------------------
+    if (!identity || !applicantName || !classroomId || !date || !startTime || !endTime) {
+      return res.json({
+        success: false,
+        message: "請填寫完整的必要資料"
+      });
+    }
+
+    // 身分只能是老師或學生
+    if (identity !== "teacher" && identity !== "student") {
+      return res.json({
+        success: false,
+        message: "身分資料錯誤"
+      });
+    }
+
+    // -------------------------------
+    // 學生必須填班級與學號
+    // -------------------------------
+    if (identity === "student") {
+      if (!className || !studentId) {
+        return res.json({
+          success: false,
+          message: "學生申請必須填寫班級與學號"
+        });
+      }
+    }
+
+    // -------------------------------
+    // 老師不用填班級與學號
+    // -------------------------------
+    let finalClassName = "";
+    let finalStudentId = "";
+
+    if (identity === "student") {
+      finalClassName = className.trim();
+      finalStudentId = studentId.trim();
+    }
+
+    // -------------------------------
+    // 教室編號
+    // -------------------------------
     const roomId = Number(classroomId);
 
-
-    // ================================
-    // 基本資料整理
-    // ================================
-
-    const cleanIdentity =
-      String(identity || "").trim();
-
-    const cleanClassName =
-      String(className || "").trim();
-
-    const cleanApplicantName =
-      String(applicantName || "").trim();
-
-    const cleanStudentId =
-      String(studentId || "").trim();
-
-    const cleanReason =
-      String(reason || "").trim();
-
-
-    // ================================
-    // 身分檢查
-    // ================================
-
-    if (
-      cleanIdentity !== "teacher" &&
-      cleanIdentity !== "student"
-    ) {
-
-      return res.status(400).json({
+    if (!Number.isInteger(roomId) || roomId < 1 || roomId > 8) {
+      return res.json({
         success: false,
-        message: "請選擇正確的身分"
+        message: "教室必須是 1～8 號教室"
       });
-
     }
 
-
-    // ================================
-    // 姓名必填
-    // ================================
-
-    if (!cleanApplicantName) {
-
-      return res.status(400).json({
+    if (!systemData.classrooms[roomId]) {
+      return res.json({
         success: false,
-        message: "請輸入姓名"
+        message: "找不到指定教室"
       });
-
     }
 
-
-    // ================================
-    // 學生資料檢查
-    // ================================
-
-    if (cleanIdentity === "student") {
-
-      if (!cleanClassName) {
-
-        return res.status(400).json({
-          success: false,
-          message: "學生請填寫班級"
-        });
-
-      }
-
-      if (!cleanStudentId) {
-
-        return res.status(400).json({
-          success: false,
-          message: "學生請填寫學號"
-        });
-
-      }
-
-    }
-
-
-    // ================================
-    // 教室、日期、時間檢查
-    // ================================
-
-    if (
-      !roomId ||
-      !date ||
-      !startTime ||
-      !endTime
-    ) {
-
-      return res.status(400).json({
-        success: false,
-        message: "請完整填寫教室、日期與時間"
-      });
-
-    }
-
-
-    // ================================
-    // 教室範圍
-    // ================================
-
-    if (
-      roomId < 1 ||
-      roomId > 8 ||
-      !systemData.classrooms[roomId]
-    ) {
-
-      return res.status(400).json({
-        success: false,
-        message: "教室必須選擇 1～8 號教室"
-      });
-
-    }
-
-
-    // ================================
+    // -------------------------------
     // 時間檢查
-    // ================================
-
+    // -------------------------------
     if (startTime >= endTime) {
-
-      return res.status(400).json({
+      return res.json({
         success: false,
         message: "結束時間必須晚於開始時間"
       });
-
     }
 
-
-    // ================================
+    // -------------------------------
     // 檢查時間衝突
-    // ================================
+    // -------------------------------
+    const hasConflict = systemData.temporaryBookings.some(item => {
+      if (item.classroomId !== roomId) {
+        return false;
+      }
 
-    const conflict =
-      systemData.temporaryBookings.some(item => {
+      if (item.date !== date) {
+        return false;
+      }
 
-        if (
-          Number(item.classroomId) !== roomId
-        ) {
-          return false;
-        }
+      // 已拒絕或已完成的不算衝突
+      if (
+        item.status === "rejected" ||
+        item.status === "completed"
+      ) {
+        return false;
+      }
 
-        if (item.date !== date) {
-          return false;
-        }
+      // 判斷時間是否重疊
+      return (
+        startTime < item.endTime &&
+        endTime > item.startTime
+      );
+    });
 
-        if (
-          item.status === "rejected" ||
-          item.status === "completed"
-        ) {
-          return false;
-        }
-
-        return (
-          startTime < item.endTime &&
-          endTime > item.startTime
-        );
-
-      });
-
-
-    if (conflict) {
-
-      return res.status(409).json({
+    if (hasConflict) {
+      return res.json({
         success: false,
-        message:
-          "此教室在這個時間已有臨時借用申請"
+        message: "此教室在指定時間已有借用申請，請選擇其他時間"
       });
-
     }
 
-
-    // ================================
+    // -------------------------------
     // 建立申請
-    // ================================
-
+    // -------------------------------
     const booking = {
-
       id: Date.now(),
 
-      // 身分
-      identity: cleanIdentity,
+      // 老師 / 學生
+      identity,
 
-      // 班級
-      className: cleanClassName,
-
-      // 姓名
-      applicantName: cleanApplicantName,
-
-      // 學號
-      studentId: cleanStudentId,
+      // 學生才有班級、學號
+      className: finalClassName,
+      applicantName: applicantName.trim(),
+      studentId: finalStudentId,
 
       // 教室
       classroomId: roomId,
-
-      classroomName:
-        systemData.classrooms[roomId].name,
-
-      // 日期
-      date,
+      classroomName: systemData.classrooms[roomId].name,
 
       // 時間
+      date,
       startTime,
-
       endTime,
 
-      // 原因，可空白
-      reason: cleanReason,
+      // 原因可以不填
+      reason: reason ? reason.trim() : "",
 
-      // 系統登入帳號
-      applicant:
-        req.session.user.username,
+      // 登入帳號
+      applicant: req.session.user.username,
 
       // 狀態
       status: "pending",
-
       statusText: "待審核",
 
       // 機械手臂格位
       slotId: null,
 
       // 時間紀錄
-      createdAt:
-        new Date().toISOString(),
-
+      createdAt: new Date().toISOString(),
       approvedAt: null,
-
-      rejectedAt: null
-
+      rejectedAt: null,
+      completedAt: null
     };
 
-
-    // ================================
-    // 儲存
-    // ================================
-
-    systemData.temporaryBookings.push(
-      booking
-    );
+    systemData.temporaryBookings.push(booking);
 
     saveData();
 
+    console.log("新增臨時借用申請：", booking);
 
-    // ================================
-    // 回傳
-    // ================================
-
-    res.json({
+    return res.json({
       success: true,
+      message: "臨時教室借用申請已送出",
       booking
     });
 
+  } catch (error) {
+    console.error("新增臨時借用申請失敗：", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "伺服器發生錯誤"
+    });
   }
-);
+});
