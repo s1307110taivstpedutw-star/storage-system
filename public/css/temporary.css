@@ -25,7 +25,6 @@ body {
    ========================= */
 
 .sidebar {
-
   position: fixed;
 
   left: 0;
@@ -42,7 +41,6 @@ body {
 
 
 .logo {
-
   font-size: 22px;
   font-weight: bold;
 
@@ -52,7 +50,6 @@ body {
 
 
 .menu {
-
   display: block;
 
   padding:
@@ -67,13 +64,11 @@ body {
 
 
 .menu:hover {
-
   background: #374151;
 }
 
 
 .menu.active {
-
   background: #2563eb;
 }
 
@@ -83,7 +78,6 @@ body {
    ========================= */
 
 .main {
-
   margin-left: 230px;
 
   padding: 30px;
@@ -91,7 +85,6 @@ body {
 
 
 h1 {
-
   margin-top: 0;
 }
 
@@ -101,7 +94,6 @@ h1 {
    ========================= */
 
 .card {
-
   background: white;
 
   border-radius: 12px;
@@ -120,7 +112,6 @@ h1 {
    ========================= */
 
 .form-grid {
-
   display: grid;
 
   grid-template-columns:
@@ -131,7 +122,6 @@ h1 {
 
 
 label {
-
   font-weight: bold;
 
   display: block;
@@ -143,7 +133,6 @@ label {
 input,
 select,
 textarea {
-
   width: 100%;
 
   padding: 10px;
@@ -158,13 +147,11 @@ textarea {
 
 
 textarea {
-
   resize: vertical;
 }
 
 
 .full {
-
   grid-column: 1 / -1;
 }
 
@@ -174,7 +161,6 @@ textarea {
    ========================= */
 
 button {
-
   border: none;
 
   padding:
@@ -189,7 +175,6 @@ button {
 
 
 .btn-primary {
-
   background: #2563eb;
 
   color: white;
@@ -197,13 +182,11 @@ button {
 
 
 .btn-primary:hover {
-
   background: #1d4ed8;
 }
 
 
 .btn-success {
-
   background: #16a34a;
 
   color: white;
@@ -211,13 +194,11 @@ button {
 
 
 .btn-success:hover {
-
   background: #15803d;
 }
 
 
 .btn-danger {
-
   background: #dc2626;
 
   color: white;
@@ -225,13 +206,11 @@ button {
 
 
 .btn-danger:hover {
-
   background: #b91c1c;
 }
 
 
 .btn-secondary {
-
   background: #6b7280;
 
   color: white;
@@ -239,7 +218,6 @@ button {
 
 
 .btn-secondary:hover {
-
   background: #4b5563;
 }
 
@@ -249,13 +227,11 @@ button {
    ========================= */
 
 .table-container {
-
   overflow-x: auto;
 }
 
 
 table {
-
   width: 100%;
 
   border-collapse: collapse;
@@ -266,7 +242,6 @@ table {
 
 th,
 td {
-
   border-bottom:
     1px solid #e5e7eb;
 
@@ -277,17 +252,15 @@ td {
 
 
 th {
-
   background: #f9fafb;
 }
 
 
 /* =========================
-   狀態
+   申請狀態
    ========================= */
 
 .status {
-
   display: inline-block;
 
   padding:
@@ -300,7 +273,6 @@ th {
 
 
 .pending {
-
   background: #fef3c7;
 
   color: #92400e;
@@ -308,7 +280,6 @@ th {
 
 
 .approved {
-
   background: #dcfce7;
 
   color: #166534;
@@ -316,7 +287,6 @@ th {
 
 
 .rejected {
-
   background: #fee2e2;
 
   color: #991b1b;
@@ -324,7 +294,6 @@ th {
 
 
 .completed {
-
   background: #e5e7eb;
 
   color: #374151;
@@ -336,7 +305,6 @@ th {
    ========================= */
 
 .slots {
-
   display: grid;
 
   grid-template-columns:
@@ -347,7 +315,6 @@ th {
 
 
 .slot {
-
   border:
     2px solid #d1d5db;
 
@@ -356,40 +323,96 @@ th {
   padding: 18px;
 
   background: #f9fafb;
+
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+
+.slot:hover {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 
 .slot-title {
-
   font-size: 20px;
 
   font-weight: bold;
+
+  margin-bottom: 10px;
 }
 
 
 .slot-status {
-
   margin-top: 8px;
 
   font-weight: bold;
 }
 
 
-.slot.free {
+/* =========================
+   格位：未借出
+   ========================= */
 
+.slot.empty {
   border-color: #22c55e;
+
+  background: #f0fdf4;
 }
 
 
-.slot.waiting {
+/* =========================
+   格位：已核准／待執行
+   ========================= */
 
-  border-color: #f59e0b;
+.slot.pending {
+  border-color: #3b82f6;
+
+  background: #eff6ff;
 }
 
 
-.slot.borrowing {
+/* =========================
+   格位：已借出
+   ========================= */
 
+.slot.occupied {
   border-color: #ef4444;
+
+  background: #fef2f2;
+}
+
+
+/* =========================
+   格位內的狀態文字
+   ========================= */
+
+.slot.empty .slot-status {
+  color: #15803d;
+}
+
+
+.slot.pending .slot-status {
+  color: #1d4ed8;
+}
+
+
+.slot.occupied .slot-status {
+  color: #b91c1c;
+}
+
+
+/* =========================
+   格位資訊
+   ========================= */
+
+.slot div {
+  line-height: 1.6;
 }
 
 
@@ -400,19 +423,16 @@ th {
 @media(max-width: 900px) {
 
   .sidebar {
-
     width: 190px;
   }
 
 
   .main {
-
     margin-left: 190px;
   }
 
 
   .slots {
-
     grid-template-columns:
       repeat(2, 1fr);
   }
@@ -423,7 +443,6 @@ th {
 @media(max-width: 650px) {
 
   .sidebar {
-
     position: relative;
 
     width: 100%;
@@ -433,7 +452,6 @@ th {
 
 
   .main {
-
     margin-left: 0;
 
     padding: 20px;
@@ -441,19 +459,16 @@ th {
 
 
   .form-grid {
-
     grid-template-columns: 1fr;
   }
 
 
   .full {
-
     grid-column: auto;
   }
 
 
   .slots {
-
     grid-template-columns: 1fr;
   }
 
