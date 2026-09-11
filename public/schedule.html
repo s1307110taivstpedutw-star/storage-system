@@ -1,1799 +1,914 @@
+```html
 <!DOCTYPE html>
 <html lang="zh-TW">
-
 <head>
-
-  <meta charset="UTF-8">
-
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0">
-
-  <title>鑰匙與冷氣卡倉儲管理系統</title>
-
-  <style>
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-
-      font-family:
-        "Segoe UI",
-        "Microsoft JhengHei",
-        Arial,
-        sans-serif;
-
-      background: #f4f6f9;
-
-      color: #333;
-    }
-
-
-    /* =========================
-       側欄
-       ========================= */
-
-    .sidebar {
-
-      position: fixed;
-
-      left: 0;
-      top: 0;
-
-      width: 240px;
-      height: 100vh;
-
-      background: #1f2937;
-
-      color: white;
-
-      padding: 20px 15px;
-
-      overflow-y: auto;
-
-    }
-
-
-    .system-title {
-
-      font-size: 20px;
-
-      font-weight: bold;
-
-      padding:
-        10px 8px 25px;
-
-      line-height: 1.5;
-
-    }
-
-
-    .menu-title {
-
-      font-size: 12px;
-
-      color: #9ca3af;
-
-      padding:
-        10px 10px 6px;
-
-    }
-
-
-    .menu-item {
-
-      display: block;
-
-      width: 100%;
-
-      padding: 12px 14px;
-
-      margin-bottom: 5px;
-
-      border-radius: 7px;
-
-      color: #e5e7eb;
-
-      text-decoration: none;
-
-      cursor: pointer;
-
-      transition: 0.2s;
-
-    }
-
-
-    .menu-item:hover {
-
-      background: #374151;
-
-    }
-
-
-    .menu-item.active {
-
-      background: #2563eb;
-
-      color: white;
-
-    }
-
-
-    .logout-menu {
-
-      margin-top: 25px;
-
-      background: #dc3545;
-
-    }
-
-
-    .logout-menu:hover {
-
-      background: #b91c1c;
-
-    }
-
-
-    /* =========================
-       主要內容
-       ========================= */
-
-    .main {
-
-      margin-left: 240px;
-
-      padding: 30px;
-
-      min-height: 100vh;
-
-    }
-
-
-    .top-bar {
-
-      display: flex;
-
-      justify-content:
-        space-between;
-
-      align-items: center;
-
-      margin-bottom: 25px;
-
-    }
-
-
-    .page-title {
-
-      margin: 0;
-
-      font-size: 28px;
-
-    }
-
-
-    .user-info {
-
-      background: white;
-
-      padding: 10px 15px;
-
-      border-radius: 8px;
-
-      box-shadow:
-        0 2px 5px
-        rgba(0,0,0,0.08);
-
-    }
-
-
-    /* =========================
-       卡片
-       ========================= */
-
-    .card {
-
-      background: white;
-
-      border-radius: 10px;
-
-      padding: 25px;
-
-      margin-bottom: 20px;
-
-      box-shadow:
-        0 2px 6px
-        rgba(0,0,0,0.08);
-
-    }
-
-
-    /* =========================
-       教室分頁
-       ========================= */
-
-    .room-tabs {
-
-      display: grid;
-
-      grid-template-columns:
-        repeat(4, 1fr);
-
-      gap: 10px;
-
-      margin-bottom: 25px;
-
-    }
-
-
-    .room-tab {
-
-      border:
-        1px solid #d1d5db;
-
-      background: #f9fafb;
-
-      padding: 12px;
-
-      border-radius: 7px;
-
-      cursor: pointer;
-
-      font-size: 15px;
-
-      transition: 0.2s;
-
-    }
-
-
-    .room-tab:hover {
-
-      background: #e5e7eb;
-
-    }
-
-
-    .room-tab.active {
-
-      background: #2563eb;
-
-      color: white;
-
-      border-color:
-        #2563eb;
-
-    }
-
-
-    /* =========================
-       教室標題
-       ========================= */
-
-    .room-header {
-
-      display: flex;
-
-      justify-content:
-        space-between;
-
-      align-items: center;
-
-      margin-bottom: 20px;
-
-    }
-
-
-    .room-name {
-
-      font-size: 22px;
-
-      font-weight: bold;
-
-    }
-
-
-    /* =========================
-       按鈕
-       ========================= */
-
-    button {
-
-      border: none;
-
-      border-radius: 6px;
-
-      padding: 9px 15px;
-
-      cursor: pointer;
-
-      font-size: 14px;
-
-    }
-
-
-    .btn-primary {
-
-      background: #2563eb;
-
-      color: white;
-
-    }
-
-
-    .btn-primary:hover {
-
-      background: #1d4ed8;
-
-    }
-
-
-    .btn-danger {
-
-      background: #dc3545;
-
-      color: white;
-
-    }
-
-
-    .btn-warning {
-
-      background: #f59e0b;
-
-      color: white;
-
-    }
-
-
-    .btn-secondary {
-
-      background: #6b7280;
-
-      color: white;
-
-    }
-
-
-    /* =========================
-       課表
-       ========================= */
-
-    table {
-
-      width: 100%;
-
-      border-collapse:
-        collapse;
-
-    }
-
-
-    th,
-    td {
-
-      border-bottom:
-        1px solid #e5e7eb;
-
-      padding: 12px;
-
-      text-align: center;
-
-    }
-
-
-    th {
-
-      background: #f3f4f6;
-
-    }
-
-
-    tr:hover {
-
-      background: #f9fafb;
-
-    }
-
-
-    /* =========================
-       管理區
-       ========================= */
-
-    .admin-panel {
-
-      background: #f8fafc;
-
-      border:
-        1px solid #e5e7eb;
-
-      border-radius: 8px;
-
-      padding: 18px;
-
-      margin-top: 20px;
-
-    }
-
-
-    .admin-buttons {
-
-      display: flex;
-
-      gap: 10px;
-
-      flex-wrap: wrap;
-
-    }
-
-
-    .hidden {
-
-      display: none !important;
-
-    }
-
-
-    /* =========================
-       空資料
-       ========================= */
-
-    .empty {
-
-      text-align: center;
-
-      padding: 40px 20px;
-
-      color: #9ca3af;
-
-    }
-
-
-    /* =========================
-       響應式
-       ========================= */
-
-    @media (max-width: 900px) {
-
-      .sidebar {
-
-        width: 190px;
-
-      }
-
-      .main {
-
-        margin-left: 190px;
-
-      }
-
-      .room-tabs {
-
-        grid-template-columns:
-          repeat(2, 1fr);
-
-      }
-
-    }
-
-  </style>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教室課表設置｜鑰匙與冷氣卡管理系統</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, "Microsoft JhengHei", sans-serif;
+            background: #f5f6fa;
+            color: #333;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ===== 側邊欄 ===== */
+
+        .sidebar {
+            width: 240px;
+            background: #1f2937;
+            color: white;
+            padding: 20px 0;
+            flex-shrink: 0;
+        }
+
+        .logo {
+            padding: 0 20px 25px;
+            font-size: 20px;
+            font-weight: bold;
+            line-height: 1.5;
+        }
+
+        .menu {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .menu a {
+            color: #d1d5db;
+            text-decoration: none;
+            padding: 14px 20px;
+            display: block;
+            transition: 0.2s;
+        }
+
+        .menu a:hover {
+            background: #374151;
+            color: white;
+        }
+
+        .menu a.active {
+            background: #2563eb;
+            color: white;
+        }
+
+        .logout {
+            margin-top: 30px;
+            border-top: 1px solid #374151;
+            padding-top: 10px;
+        }
+
+        /* ===== 主畫面 ===== */
+
+        .main {
+            flex: 1;
+            padding: 30px;
+            overflow-x: auto;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .topbar h1 {
+            font-size: 28px;
+        }
+
+        .user-info {
+            background: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        /* ===== 教室卡片 ===== */
+
+        .classroom-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .classroom-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .classroom-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+
+        .classroom-header h2 {
+            font-size: 20px;
+        }
+
+        .rename-btn {
+            border: none;
+            background: #2563eb;
+            color: white;
+            padding: 7px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .rename-btn:hover {
+            background: #1d4ed8;
+        }
+
+        .schedule-list {
+            min-height: 80px;
+        }
+
+        .schedule-item {
+            background: #f3f4f6;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+
+        .schedule-item strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .schedule-empty {
+            color: #888;
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .add-schedule-btn {
+            width: 100%;
+            margin-top: 10px;
+            border: 1px dashed #9ca3af;
+            background: white;
+            padding: 10px;
+            border-radius: 7px;
+            cursor: pointer;
+        }
+
+        .add-schedule-btn:hover {
+            background: #f9fafb;
+        }
+
+        /* ===== 管理員區域 ===== */
+
+        .admin-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .admin-panel h2 {
+            margin-bottom: 15px;
+        }
+
+        .admin-panel button {
+            border: none;
+            background: #16a34a;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 7px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        .admin-panel button:hover {
+            background: #15803d;
+        }
+
+        @media (max-width: 800px) {
+            .sidebar {
+                width: 190px;
+            }
+
+            .main {
+                padding: 20px;
+            }
+
+            .topbar {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
 </head>
-
 
 <body>
 
+<div class="layout">
 
-  <!-- =================================
-       左側側欄
-       ================================= -->
+    <!-- ===== 側邊欄 ===== -->
 
-  <aside class="sidebar">
+    <aside class="sidebar">
 
-    <div class="system-title">
+        <div class="logo">
+            🔑<br>
+            鑰匙與冷氣卡<br>
+            倉儲管理系統
+        </div>
 
-      🔐 鑰匙與冷氣卡<br>
+        <nav class="menu">
 
-      倉儲管理系統
+            <a href="/schedule.html" class="active">
+                🏠 系統首頁
+            </a>
 
-    </div>
+            <a href="/schedule.html" class="active">
+                📅 教室課表設置
+            </a>
 
+            <a href="#">
+                ❄️ 冷氣卡金額管理
+            </a>
 
-    <div class="menu-title">
-      系統管理
-    </div>
+            <a href="#">
+                👤 帳號管理
+            </a>
 
+            <a href="/temporary.html">
+                🔑 臨時教室借還核准
+            </a>
 
-    <a class="menu-item">
-      🏠 系統首頁
-    </a>
+            <a href="#">
+                📡 連線監測
+            </a>
 
+            <a href="#">
+                📋 網站日誌
+            </a>
 
-    <a class="menu-item active">
-      📅 教室課表設置
-    </a>
+            <a href="#" onclick="logout(); return false;">
+                🚪 登出系統
+            </a>
 
+        </nav>
 
-    <a class="menu-item">
-      ❄️ 冷氣卡金額管理
-    </a>
-
-
-    <a class="menu-item">
-      👤 帳號管理
-    </a>
-
-
-    <a class="menu-item">
-      🔑 臨時教室借還核准
-    </a>
-
-
-    <div class="menu-title">
-      系統監控
-    </div>
-
-
-    <a class="menu-item">
-      📡 連線監測
-    </a>
+    </aside>
 
 
-    <a class="menu-item">
-      📋 網站日誌
-    </a>
+    <!-- ===== 主內容 ===== -->
 
+    <main class="main">
 
-    <a
-      class="menu-item logout-menu"
-      onclick="logout()">
+        <div class="topbar">
 
-      🚪 登出系統
+            <div>
+                <h1>📅 教室課表設置</h1>
+                <p style="margin-top: 6px; color: #666;">
+                    管理 8 間教室的固定課表
+                </p>
+            </div>
 
-    </a>
-
-  </aside>
-
-
-
-  <!-- =================================
-       主要內容
-       ================================= -->
-
-  <main class="main">
-
-
-    <div class="top-bar">
-
-      <h1 class="page-title">
-        教室課表設置
-      </h1>
-
-
-      <div class="user-info">
-
-        👤
-
-        <span id="username">
-          載入中...
-        </span>
-
-        ／
-
-        <span id="role">
-          載入中...
-        </span>
-
-      </div>
-
-    </div>
-
-
-
-    <!-- =================================
-         8 間教室
-         ================================= -->
-
-    <div class="card">
-
-      <h2>
-        八間教室
-      </h2>
-
-      <p>
-        請選擇要查看的教室。
-      </p>
-
-
-      <div
-        class="room-tabs"
-        id="roomTabs">
-      </div>
-
-
-      <div class="room-header">
-
-        <div
-          class="room-name"
-          id="currentRoomName">
-
-          教室 1
+            <div class="user-info">
+                使用者：
+                <strong id="username">載入中...</strong>
+                ／
+                <span id="role">載入中...</span>
+            </div>
 
         </div>
 
 
-        <button
-          id="renameRoomButton"
-          class="btn-warning"
-          onclick="renameRoom()">
+        <!-- ===== 管理員功能 ===== -->
 
-          修改教室名稱
+        <section
+            id="adminPanel"
+            class="admin-panel"
+            style="display:none;"
+        >
 
-        </button>
+            <h2>⚙️ 管理員功能</h2>
 
-      </div>
+            <button onclick="importCSV()">
+                📥 匯入 CSV 課表
+            </button>
 
+            <button onclick="exportCSV()">
+                📤 匯出 CSV 課表
+            </button>
 
-      <!-- =================================
-           課表
-           ================================= -->
-
-      <div id="scheduleArea">
-
-        <div class="empty">
-
-          資料載入中...
-
-        </div>
-
-      </div>
+        </section>
 
 
+        <!-- ===== 教室列表 ===== -->
 
-      <!-- =================================
-           管理員操作區
-           ================================= -->
+        <section>
 
-      <div
-        id="adminPanel"
-        class="admin-panel hidden">
+            <div
+                id="classroomGrid"
+                class="classroom-grid"
+            >
+                <div class="classroom-card">
+                    載入教室資料中...
+                </div>
+            </div>
 
-        <h3>
-          管理員操作
-        </h3>
+        </section>
 
+    </main>
 
-        <div class="admin-buttons">
-
-          <button
-            class="btn-primary"
-            onclick="addSchedule()">
-
-            ＋ 新增課表
-
-          </button>
-
-
-          <button
-            class="btn-primary"
-            onclick="document.getElementById('csvFile').click()">
-
-            📁 匯入 CSV
-
-          </button>
-
-
-          <button
-            class="btn-secondary"
-            onclick="exportSchedule()">
-
-            📤 匯出課表
-
-          </button>
-
-
-          <input
-            type="file"
-            id="csvFile"
-            accept=".csv,.xlsx,.xls"
-            style="display:none"
-            onchange="importCSV(event)">
-
-        </div>
-
-      </div>
-
-    </div>
-
-  </main>
-
+</div>
 
 
 <script>
 
-
-  // =====================================
-  // 系統資料
-  // =====================================
-
-  let currentUser = null;
-
-  let currentRoom = 1;
-
-  let rooms = [];
+    let currentUser = null;
+    let rooms = [];
 
 
+    // =========================
+    // HTML 防注入
+    // =========================
 
-  // =====================================
-  // 載入登入者
-  // =====================================
+    function escapeHTML(text) {
 
-  async function loadUser() {
+        if (text === null || text === undefined) {
+            return "";
+        }
 
-    try {
+        return String(text)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
 
-      const response =
-        await fetch('/api/me');
+
+    // =========================
+    // 載入登入資訊
+    // =========================
+
+    async function loadUser() {
+
+        try {
+
+            const response = await fetch("/api/me");
+
+            if (!response.ok) {
+                window.location.href = "/index.html";
+                return;
+            }
+
+            const result = await response.json();
+
+            if (!result.loggedIn) {
+                window.location.href = "/index.html";
+                return;
+            }
+
+            currentUser = result.user;
+
+            document.getElementById("username").textContent =
+                currentUser.username;
+
+            document.getElementById("role").textContent =
+                currentUser.role === "admin"
+                    ? "管理員"
+                    : "老師";
 
 
-      if (!response.ok) {
+            // 管理員才顯示管理功能
+
+            if (currentUser.role === "admin") {
+
+                document.getElementById("adminPanel").style.display =
+                    "block";
+
+            }
+
+
+            await loadClassrooms();
+
+        } catch (error) {
+
+            console.error("loadUser 發生錯誤：", error);
+
+            alert(
+                "系統載入失敗：" +
+                error.message
+            );
+
+        }
+
+    }
+
+
+    // =========================
+    // 載入教室
+    // =========================
+
+    async function loadClassrooms() {
+
+        try {
+
+            const response =
+                await fetch("/api/classrooms");
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    "取得教室資料失敗 HTTP " +
+                    response.status
+                );
+
+            }
+
+
+            const result =
+                await response.json();
+
+
+            if (!result.success) {
+
+                throw new Error(
+                    result.message ||
+                    "取得教室資料失敗"
+                );
+
+            }
+
+
+            /*
+             * ★ 這裡是本次修正的重點
+             *
+             * server.js 回傳：
+             *
+             * {
+             *   success: true,
+             *   classrooms: ...
+             * }
+             *
+             * 所以要使用 result.classrooms
+             */
+
+            rooms =
+                Object.values(
+                    result.classrooms
+                );
+
+
+            renderClassrooms();
+
+
+        } catch (error) {
+
+            console.error(
+                "loadClassrooms 發生錯誤：",
+                error
+            );
+
+            document.getElementById(
+                "classroomGrid"
+            ).innerHTML = `
+
+                <div class="classroom-card">
+
+                    <h2>❌ 教室資料載入失敗</h2>
+
+                    <p style="margin-top:10px;color:#666;">
+                        ${escapeHTML(error.message)}
+                    </p>
+
+                </div>
+
+            `;
+
+        }
+
+    }
+
+
+    // =========================
+    // 顯示教室
+    // =========================
+
+    function renderClassrooms() {
+
+        const grid =
+            document.getElementById(
+                "classroomGrid"
+            );
+
+
+        if (!rooms.length) {
+
+            grid.innerHTML = `
+
+                <div class="classroom-card">
+
+                    <h2>目前沒有教室資料</h2>
+
+                </div>
+
+            `;
+
+            return;
+        }
+
+
+        grid.innerHTML =
+            rooms.map(room => {
+
+                const schedules =
+                    Array.isArray(room.schedules)
+                        ? room.schedules
+                        : [];
+
+
+                let scheduleHTML = "";
+
+
+                if (schedules.length === 0) {
+
+                    scheduleHTML = `
+                        <div class="schedule-empty">
+                            尚未設定課表
+                        </div>
+                    `;
+
+                } else {
+
+                    scheduleHTML =
+                        schedules.map(schedule => `
+
+                            <div class="schedule-item">
+
+                                <strong>
+                                    ${escapeHTML(
+                                        schedule.className ||
+                                        schedule.class ||
+                                        "未設定班級"
+                                    )}
+                                </strong>
+
+                                <div>
+                                    星期
+                                    ${escapeHTML(
+                                        schedule.weekday ||
+                                        schedule.day ||
+                                        ""
+                                    )}
+                                </div>
+
+                                <div>
+                                    ${escapeHTML(
+                                        schedule.startTime ||
+                                        ""
+                                    )}
+                                    -
+                                    ${escapeHTML(
+                                        schedule.endTime ||
+                                        ""
+                                    )}
+                                </div>
+
+                            </div>
+
+                        `).join("");
+
+                }
+
+
+                return `
+
+                    <div class="classroom-card">
+
+                        <div class="classroom-header">
+
+                            <h2>
+                                🏫
+                                ${escapeHTML(room.name)}
+                            </h2>
+
+                            ${
+                                currentUser &&
+                                currentUser.role === "admin"
+
+                                ? `
+
+                                    <button
+                                        class="rename-btn"
+                                        onclick="renameClassroom(${room.id})"
+                                    >
+                                        修改名稱
+                                    </button>
+
+                                  `
+
+                                : ""
+                            }
+
+                        </div>
+
+
+                        <div class="schedule-list">
+
+                            ${scheduleHTML}
+
+                        </div>
+
+
+                        ${
+                            currentUser &&
+                            currentUser.role === "admin"
+
+                            ? `
+
+                                <button
+                                    class="add-schedule-btn"
+                                    onclick="addSchedule(${room.id})"
+                                >
+                                    ＋ 新增課表
+                                </button>
+
+                              `
+
+                            : ""
+                        }
+
+                    </div>
+
+                `;
+
+            }).join("");
+
+    }
+
+
+    // =========================
+    // 修改教室名稱
+    // =========================
+
+    async function renameClassroom(id) {
+
+        const room =
+            rooms.find(
+                r => Number(r.id) === Number(id)
+            );
+
+
+        if (!room) {
+            alert("找不到教室");
+            return;
+        }
+
+
+        const newName =
+            prompt(
+                "請輸入新的教室名稱：",
+                room.name
+            );
+
+
+        if (!newName) {
+            return;
+        }
+
+
+        try {
+
+            const response =
+                await fetch(
+                    `/api/classrooms/${id}`,
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body: JSON.stringify({
+                            name: newName
+                        })
+                    }
+                );
+
+
+            const result =
+                await response.json();
+
+
+            if (!result.success) {
+
+                throw new Error(
+                    result.message ||
+                    "修改失敗"
+                );
+
+            }
+
+
+            alert("教室名稱修改成功");
+
+            await loadClassrooms();
+
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert(
+                "修改失敗：" +
+                error.message
+            );
+
+        }
+
+    }
+
+
+    // =========================
+    // 新增課表
+    // =========================
+
+    async function addSchedule(id) {
+
+        const className =
+            prompt("請輸入班級名稱：");
+
+        if (!className) {
+            return;
+        }
+
+
+        const weekday =
+            prompt(
+                "請輸入星期：\n例如：一、二、三、四、五"
+            );
+
+        if (!weekday) {
+            return;
+        }
+
+
+        const startTime =
+            prompt(
+                "請輸入開始時間：\n例如：08:00"
+            );
+
+        if (!startTime) {
+            return;
+        }
+
+
+        const endTime =
+            prompt(
+                "請輸入結束時間：\n例如：09:00"
+            );
+
+        if (!endTime) {
+            return;
+        }
+
+
+        try {
+
+            const response =
+                await fetch(
+                    `/api/classrooms/${id}/schedules`,
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body: JSON.stringify({
+
+                            className,
+                            weekday,
+                            startTime,
+                            endTime
+
+                        })
+
+                    }
+                );
+
+
+            const result =
+                await response.json();
+
+
+            if (!result.success) {
+
+                throw new Error(
+                    result.message ||
+                    "新增課表失敗"
+                );
+
+            }
+
+
+            alert("課表新增成功");
+
+            await loadClassrooms();
+
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert(
+                "新增失敗：" +
+                error.message
+            );
+
+        }
+
+    }
+
+
+    // =========================
+    // CSV 匯入
+    // =========================
+
+    function importCSV() {
+
+        alert(
+            "CSV 匯入功能下一階段再處理。"
+        );
+
+    }
+
+
+    // =========================
+    // CSV 匯出
+    // =========================
+
+    function exportCSV() {
 
         window.location.href =
-          '/index.html';
-
-        return;
-
-      }
-
-
-      const result =
-        await response.json();
-
-
-      currentUser =
-        result.user;
-
-
-      document.getElementById(
-        'username'
-      ).textContent =
-        currentUser.username;
-
-
-      document.getElementById(
-        'role'
-      ).textContent =
-        currentUser.role === 'admin'
-          ? '管理員'
-          : '老師';
-
-
-      // ---------------------------------
-      // 管理員功能
-      // ---------------------------------
-
-      if (
-        currentUser.role === 'admin'
-      ) {
-
-        document
-          .getElementById(
-            'adminPanel'
-          )
-          .classList.remove(
-            'hidden'
-          );
-
-      } else {
-
-        document
-          .getElementById(
-            'renameRoomButton'
-          )
-          .classList.add(
-            'hidden'
-          );
-
-      }
-
-
-      // ---------------------------------
-      // 從伺服器取得真正資料
-      // ---------------------------------
-
-      await loadClassrooms();
-
-
-    } catch (error) {
-
-      console.error(error);
-
-      alert(
-        '無法取得登入資訊'
-      );
+            "/api/classrooms/export-csv";
 
     }
 
-  }
 
+    // =========================
+    // 登出
+    // =========================
 
+    async function logout() {
 
-  // =====================================
-  // 從 server 取得 8 間教室
-  // =====================================
+        try {
 
-  async function loadClassrooms() {
+            await fetch(
+                "/api/logout",
+                {
+                    method: "POST"
+                }
+            );
 
-    try {
+        } catch (error) {
 
-      const response =
-        await fetch(
-          '/api/classrooms'
-        );
-
-
-      if (!response.ok) {
-
-        throw new Error(
-          '取得教室資料失敗'
-        );
-
-      }
-
-
-      const result =
-        await response.json();
-
-
-      if (!result.success) {
-
-        throw new Error(
-          result.message ||
-          '取得資料失敗'
-        );
-
-      }
-
-
-      /*
-       * server 回傳的是：
-       *
-       * {
-       *   1: {...},
-       *   2: {...},
-       *   ...
-       * }
-       *
-       * 轉成前端陣列。
-       */
-
-      rooms =
-        Object.values(
-          result.data
-        );
-
-
-      /*
-       * 確保按照 1～8 排列。
-       */
-
-      rooms.sort(
-        (a, b) =>
-          a.id - b.id
-      );
-
-
-      renderRoomTabs();
-
-      renderRoom();
-
-
-    } catch (error) {
-
-      console.error(error);
-
-      document.getElementById(
-        'scheduleArea'
-      ).innerHTML = `
-
-        <div class="empty">
-
-          ❌ 無法取得教室資料<br><br>
-
-          ${escapeHTML(
-            error.message
-          )}
-
-        </div>
-
-      `;
-
-    }
-
-  }
-
-
-
-  // =====================================
-  // 建立教室按鈕
-  // =====================================
-
-  function renderRoomTabs() {
-
-    const tabs =
-      document.getElementById(
-        'roomTabs'
-      );
-
-
-    tabs.innerHTML = '';
-
-
-    rooms.forEach(
-      room => {
-
-        const button =
-          document.createElement(
-            'button'
-          );
-
-
-        button.className =
-          'room-tab';
-
-
-        if (
-          room.id === currentRoom
-        ) {
-
-          button.classList.add(
-            'active'
-          );
+            console.error(error);
 
         }
 
 
-        button.textContent =
-          room.name;
-
-
-        button.onclick =
-          () => {
-
-            currentRoom =
-              room.id;
-
-
-            renderRoomTabs();
-
-            renderRoom();
-
-          };
-
-
-        tabs.appendChild(
-          button
-        );
-
-      }
-    );
-
-  }
-
-
-
-  // =====================================
-  // 顯示目前教室
-  // =====================================
-
-  function renderRoom() {
-
-    const room =
-      rooms.find(
-        r =>
-          Number(r.id) ===
-          Number(currentRoom)
-      );
-
-
-    if (!room) {
-
-      return;
+        window.location.href =
+            "/index.html";
 
     }
 
 
-    document.getElementById(
-      'currentRoomName'
-    ).textContent =
-      room.name;
-
-
-    const area =
-      document.getElementById(
-        'scheduleArea'
-      );
-
-
-    const schedules =
-      room.schedules || [];
-
-
-    // ---------------------------------
-    // 沒有課表
-    // ---------------------------------
-
-    if (
-      schedules.length === 0
-    ) {
-
-      area.innerHTML = `
-
-        <div class="empty">
-
-          目前「${escapeHTML(
-            room.name
-          )}」
-
-          尚未建立課表資料。
-
-        </div>
-
-      `;
-
-      return;
-
-    }
-
-
-    // ---------------------------------
-    // 課表
-    // ---------------------------------
-
-    let html = `
-
-      <table>
-
-        <thead>
-
-          <tr>
-
-            <th>班級</th>
-
-            <th>星期</th>
-
-            <th>開始時間</th>
-
-            <th>結束時間</th>
-
-            <th>操作</th>
-
-          </tr>
-
-        </thead>
-
-        <tbody>
-
-    `;
-
-
-    schedules.forEach(
-      schedule => {
-
-        html += `
-
-          <tr>
-
-            <td>
-              ${escapeHTML(
-                schedule.className
-              )}
-            </td>
-
-            <td>
-              ${escapeHTML(
-                schedule.weekday
-              )}
-            </td>
-
-            <td>
-              ${escapeHTML(
-                schedule.startTime
-              )}
-            </td>
-
-            <td>
-              ${escapeHTML(
-                schedule.endTime
-              )}
-            </td>
-
-            <td>
-
-              ${
-                currentUser &&
-                currentUser.role === 'admin'
-
-                ?
-
-                `<button
-                  class="btn-danger"
-                  onclick="deleteSchedule('${escapeAttribute(schedule.id)}')">
-
-                  刪除
-
-                </button>`
-
-                :
-
-                '—'
-
-              }
-
-            </td>
-
-          </tr>
-
-        `;
-
-      }
-    );
-
-
-    html += `
-
-        </tbody>
-
-      </table>
-
-    `;
-
-
-    area.innerHTML =
-      html;
-
-  }
-
-
-
-  // =====================================
-  // 修改教室名稱
-  // =====================================
-
-  async function renameRoom() {
-
-    if (
-      !currentUser ||
-      currentUser.role !== 'admin'
-    ) {
-
-      return;
-
-    }
-
-
-    const room =
-      rooms.find(
-        r =>
-          Number(r.id) ===
-          Number(currentRoom)
-      );
-
-
-    if (!room) {
-
-      return;
-
-    }
-
-
-    const newName =
-      prompt(
-        '請輸入新的教室名稱：',
-        room.name
-      );
-
-
-    if (
-      newName === null
-    ) {
-
-      return;
-
-    }
-
-
-    if (
-      newName.trim() === ''
-    ) {
-
-      alert(
-        '教室名稱不能為空白。'
-      );
-
-      return;
-
-    }
-
-
-    try {
-
-      const response =
-        await fetch(
-          `/api/classrooms/${currentRoom}`,
-          {
-
-            method: 'POST',
-
-            headers: {
-
-              'Content-Type':
-                'application/json'
-
-            },
-
-            body:
-              JSON.stringify({
-
-                name:
-                  newName.trim()
-
-              })
-
-          }
-        );
-
-
-      const result =
-        await response.json();
-
-
-      if (!response.ok) {
-
-        throw new Error(
-          result.message ||
-          '修改失敗'
-        );
-
-      }
-
-
-      alert(
-        '教室名稱修改成功！'
-      );
-
-
-      await loadClassrooms();
-
-
-    } catch (error) {
-
-      console.error(error);
-
-      alert(
-        '修改失敗：' +
-        error.message
-      );
-
-    }
-
-  }
-
-
-
-  // =====================================
-  // 新增課表
-  // =====================================
-
-  async function addSchedule() {
-
-    if (
-      !currentUser ||
-      currentUser.role !== 'admin'
-    ) {
-
-      return;
-
-    }
-
-
-    const className =
-      prompt(
-        '請輸入班級：\n例如：控制二甲'
-      );
-
-
-    if (
-      className === null
-    ) {
-
-      return;
-
-    }
-
-
-    if (
-      className.trim() === ''
-    ) {
-
-      alert(
-        '班級不能為空白。'
-      );
-
-      return;
-
-    }
-
-
-    const weekday =
-      prompt(
-        '請輸入星期：\n例如：星期一'
-      );
-
-
-    if (
-      weekday === null
-    ) {
-
-      return;
-
-    }
-
-
-    if (
-      weekday.trim() === ''
-    ) {
-
-      alert(
-        '星期不能為空白。'
-      );
-
-      return;
-
-    }
-
-
-    const startTime =
-      prompt(
-        '請輸入開始時間：\n例如：08:00'
-      );
-
-
-    if (
-      startTime === null
-    ) {
-
-      return;
-
-    }
-
-
-    const endTime =
-      prompt(
-        '請輸入結束時間：\n例如：10:00'
-      );
-
-
-    if (
-      endTime === null
-    ) {
-
-      return;
-
-    }
-
-
-    if (
-      !startTime.trim() ||
-      !endTime.trim()
-    ) {
-
-      alert(
-        '時間不能為空白。'
-      );
-
-      return;
-
-    }
-
-
-    // ---------------------------------
-    // 傳給 server
-    // ---------------------------------
-
-    try {
-
-      const response =
-        await fetch(
-          `/api/classrooms/${currentRoom}/schedules`,
-          {
-
-            method: 'POST',
-
-            headers: {
-
-              'Content-Type':
-                'application/json'
-
-            },
-
-            body:
-              JSON.stringify({
-
-                className:
-                  className.trim(),
-
-                weekday:
-                  weekday.trim(),
-
-                startTime:
-                  startTime.trim(),
-
-                endTime:
-                  endTime.trim()
-
-              })
-
-          }
-        );
-
-
-      const result =
-        await response.json();
-
-
-      if (!response.ok) {
-
-        throw new Error(
-          result.message ||
-          '新增課表失敗'
-        );
-
-      }
-
-
-      alert(
-        '課表新增成功！'
-      );
-
-
-      /*
-       * 重新從 server 取得資料。
-       *
-       * 不使用瀏覽器暫存。
-       */
-
-      await loadClassrooms();
-
-
-    } catch (error) {
-
-      console.error(error);
-
-      alert(
-        '新增失敗：' +
-        error.message
-      );
-
-    }
-
-  }
-
-
-
-  // =====================================
-  // 刪除課表
-  // =====================================
-
-  async function deleteSchedule(
-    scheduleId
-  ) {
-
-    if (
-      !currentUser ||
-      currentUser.role !== 'admin'
-    ) {
-
-      return;
-
-    }
-
-
-    if (
-      !confirm(
-        '確定要刪除這筆課表嗎？'
-      )
-    ) {
-
-      return;
-
-    }
-
-
-    try {
-
-      const response =
-        await fetch(
-
-          `/api/classrooms/${currentRoom}/schedules/${encodeURIComponent(scheduleId)}`,
-
-          {
-
-            method: 'DELETE'
-
-          }
-
-        );
-
-
-      const result =
-        await response.json();
-
-
-      if (!response.ok) {
-
-        throw new Error(
-          result.message ||
-          '刪除失敗'
-        );
-
-      }
-
-
-      alert(
-        '課表已刪除！'
-      );
-
-
-      await loadClassrooms();
-
-
-    } catch (error) {
-
-      console.error(error);
-
-      alert(
-        '刪除失敗：' +
-        error.message
-      );
-
-    }
-
-  }
-
-
-
-  // =====================================
-  // CSV 匯入
-  // =====================================
-
-  async function importCSV(
-    event
-  ) {
-
-    if (
-      !currentUser ||
-      currentUser.role !== 'admin'
-    ) {
-
-      return;
-
-    }
-
-
-    const file =
-      event.target.files[0];
-
-
-    if (!file) {
-
-      return;
-
-    }
-
-
-    const formData =
-      new FormData();
-
-
-    formData.append(
-      'file',
-      file
-    );
-
-
-    try {
-
-      const response =
-        await fetch(
-          '/api/classrooms/import-csv',
-          {
-
-            method: 'POST',
-
-            body:
-              formData
-
-          }
-        );
-
-
-      const result =
-        await response.json();
-
-
-      if (!response.ok) {
-
-        throw new Error(
-          result.message ||
-          'CSV 匯入失敗'
-        );
-
-      }
-
-
-      alert(
-        result.message
-      );
-
-
-      await loadClassrooms();
-
-
-    } catch (error) {
-
-      console.error(error);
-
-      alert(
-        'CSV 匯入失敗：' +
-        error.message
-      );
-
-    }
-
-
-    // 清除檔案選擇
-    event.target.value = '';
-
-  }
-
-
-
-  // =====================================
-  // 匯出課表
-  // =====================================
-
-  function exportSchedule() {
-
-    /*
-     * 直接讓瀏覽器下載 server
-     * 產生的 CSV。
-     */
-
-    window.location.href =
-      '/api/classrooms/export-csv';
-
-  }
-
-
-
-  // =====================================
-  // 登出
-  // =====================================
-
-  async function logout() {
-
-    if (
-      !confirm(
-        '確定要登出系統嗎？'
-      )
-    ) {
-
-      return;
-
-    }
-
-
-    try {
-
-      await fetch(
-        '/api/logout',
-        {
-          method: 'POST'
-        }
-      );
-
-
-      window.location.href =
-        '/index.html';
-
-
-    } catch (error) {
-
-      alert(
-        '登出失敗，請稍後再試。'
-      );
-
-    }
-
-  }
-
-
-
-  // =====================================
-  // 防止 HTML 注入
-  // =====================================
-
-  function escapeHTML(
-    value
-  ) {
-
-    return String(
-      value ?? ''
-    )
-
-      .replace(
-        /&/g,
-        '&amp;'
-      )
-
-      .replace(
-        /</g,
-        '&lt;'
-      )
-
-      .replace(
-        />/g,
-        '&gt;'
-      )
-
-      .replace(
-        /"/g,
-        '&quot;'
-      )
-
-      .replace(
-        /'/g,
-        '&#039;'
-      );
-
-  }
-
-
-
-  function escapeAttribute(
-    value
-  ) {
-
-    return String(
-      value ?? ''
-    )
-
-      .replace(
-        /\\/g,
-        '\\\\'
-      )
-
-      .replace(
-        /'/g,
-        "\\'"
-      );
-
-  }
-
-
-
-  // =====================================
-  // 啟動
-  // =====================================
-
-  loadUser();
+    // =========================
+    // 啟動
+    // =========================
+
+    loadUser();
 
 </script>
 
-
 </body>
-
 </html>
+```
