@@ -1,1752 +1,1048 @@
-// ==========================================
-// 鑰匙與冷氣卡機械手臂倉儲管理系統
-// server.js
-// ==========================================
-
-const express = require('express');
-const session = require('express-session');
-const multer = require('multer');
-const xlsx = require('xlsx');
-const path = require('path');
-const fs = require('fs');
-
-
-// ==========================================
-// 1. 建立 Express
-// ==========================================
+const express = require("express");
+const session = require("express-session");
+const multer = require("multer");
+const XLSX = require("xlsx");
+const path = require("path");
+const fs = require("fs");
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
+const DATA_FILE = path.join(__dirname, "data.json");
 
-// ==========================================
-// 2. 檔案上傳
-// ==========================================
+// ================================
+// 基本設定
+// ================================
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "arm_key_secret_123",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: false,
+      maxAge: 1000 * 60 * 60 * 8
+    }
+  })
+);
+
+app.use(express.static(path.join(__dirname, "public")));
 
 const upload = multer({
   storage: multer.memoryStorage()
 });
 
-
-// ==========================================
-// 3. 接收資料
-// ==========================================
-
-app.use(express.json());
-
-app.use(express.urlencoded({
-  extended: true
-}));
-
-
-// ==========================================
-// 4. 前端資料夾
-// ==========================================
-
-app.use(express.static(
-  path.join(__dirname, 'public')
-));
-
-
-// ==========================================
-// 5. Session
-// ==========================================
-
-app.use(session({
-
-  secret:
-    process.env.SESSION_SECRET ||
-    'arm_key_secret_123',
-
-  resave: false,
-
-  saveUninitialized: false,
-
-  cookie: {
-    secure: false
-  }
-
-}));
-
-
-// ==========================================
-// 6. 資料檔案
-// ==========================================
-
-const DATA_FILE =
-  path.join(__dirname, 'data.json');
-
-
-// ==========================================
-// 7. 預設機械手臂 8 格
-// ==========================================
+// ================================
+// 預設資料
+// ================================
 
 function getDefaultArmSlots() {
-
   const slots = {};
 
   for (let i = 1; i <= 8; i++) {
-
     slots[i] = {
-
       slotId: i,
-
       roomName: `第 ${i} 教室`,
-
       keyName: `教室 ${i} 鑰匙`,
-
-      borrower: '',
-
-      borrowTime: ''
-
+      borrower: "",
+      borrowTime: "",
+      status: "空閒",
+      bookingId: null
     };
-
   }
 
   return slots;
 }
 
-
-// ==========================================
-// 8. 預設 8 個教室
-// ==========================================
-
 function getDefaultClassrooms() {
-
   const classrooms = {};
 
   for (let i = 1; i <= 8; i++) {
-
     classrooms[i] = {
-
       id: i,
-
       name: `教室 ${i}`,
-
       schedules: []
-
     };
-
   }
 
   return classrooms;
 }
 
-
-// ==========================================
-// 9. 預設完整資料
-// ==========================================
-
 function getDefaultData() {
-
   return {
-
-    armSlots:
-      getDefaultArmSlots(),
-
-    classrooms:
-      getDefaultClassrooms()
-
+    armSlots: getDefaultArmSlots(),
+    classrooms: getDefaultClassrooms(),
+    temporaryBookings: []
   };
-
 }
 
-
-// ==========================================
-// 10. 資料格式整理
-// ==========================================
+// ================================
+// 資料格式整理
+// ================================
 
 function normalizeData(data) {
+  const defaultData = getDefaultData();
 
-  if (!data) {
-
-    return getDefaultData();
-
+  if (!data || typeof data !== "object") {
+    return defaultData;
   }
 
-
-  // ----------------------------------------
-  // 已經是新版格式
-  // ----------------------------------------
-
-  if (
-    data.armSlots &&
-    data.classrooms
-  ) {
-
-    return data;
-
+  // 舊版資料可能只有 armSlots
+  if (!data.armSlots) {
+    data.armSlots = defaultData.armSlots;
   }
 
+  if (!data.classrooms) {
+    data.classrooms = defaultData.classrooms;
+  }
 
-  // ----------------------------------------
-  // 舊版只有機械手臂資料
-  // ----------------------------------------
+  if (!data.temporaryBookings) {
+    data.temporaryBookings = [];
+  }
 
-  const armSlots = {};
-
-
+  // 確保 1~8 格都存在
   for (let i = 1; i <= 8; i++) {
-
-    if (data[i]) {
-
-      armSlots[i] = data[i];
-
+    if (!data.armSlots[i]) {
+      data.armSlots[i] = defaultData.armSlots[i];
     }
 
+    if (!data.classrooms[i]) {
+      data.classrooms[i] = defaultData.classrooms[i];
+    }
+
+    if (!Array.isArray(data.classrooms[i].schedules)) {
+      data.classrooms[i].schedules = [];
+    }
+
+    if (!data.armSlots[i].status) {
+      data.armSlots[i].status = "空閒";
+    }
+
+    if (!("bookingId" in data.armSlots[i])) {
+      data.armSlots[i].bookingId = null;
+    }
   }
 
-
-  return {
-
-    armSlots:
-      Object.keys(armSlots).length > 0
-        ? armSlots
-        : getDefaultArmSlots(),
-
-    classrooms:
-      getDefaultClassrooms()
-
-  };
-
+  return data;
 }
 
-
-// ==========================================
-// 11. 讀取資料
-// ==========================================
+// ================================
+// 載入資料
+// ================================
 
 function loadData() {
-
   try {
-
-    if (
-      fs.existsSync(DATA_FILE)
-    ) {
-
-      const text =
-        fs.readFileSync(
-          DATA_FILE,
-          'utf8'
-        );
-
-
-      const data =
-        JSON.parse(text);
-
-
-      return normalizeData(data);
-
+    if (!fs.existsSync(DATA_FILE)) {
+      const newData = getDefaultData();
+      fs.writeFileSync(
+        DATA_FILE,
+        JSON.stringify(newData, null, 2),
+        "utf8"
+      );
+      return newData;
     }
 
+    const raw = fs.readFileSync(DATA_FILE, "utf8");
+
+    if (!raw.trim()) {
+      return getDefaultData();
+    }
+
+    const data = JSON.parse(raw);
+
+    return normalizeData(data);
   } catch (error) {
-
-    console.error(
-      '讀取 data.json 失敗：',
-      error.message
-    );
-
+    console.error("讀取 data.json 失敗：", error);
+    return getDefaultData();
   }
-
-
-  return getDefaultData();
-
 }
 
-
-// ==========================================
-// 12. 儲存資料
-// ==========================================
-
-function saveData(data) {
-
+function saveData() {
   try {
-
     fs.writeFileSync(
-
       DATA_FILE,
-
-      JSON.stringify(
-        data,
-        null,
-        2
-      ),
-
-      'utf8'
-
+      JSON.stringify(systemData, null, 2),
+      "utf8"
     );
-
-
-    console.log(
-      '資料已儲存'
-    );
-
 
     return true;
-
   } catch (error) {
-
-    console.error(
-      '儲存 data.json 失敗：',
-      error.message
-    );
-
-
+    console.error("寫入 data.json 失敗：", error);
     return false;
-
   }
-
 }
 
+let systemData = loadData();
 
-// ==========================================
-// 13. 載入系統資料
-// ==========================================
+// ================================
+// Keep Alive
+// ================================
 
-let systemData =
-  loadData();
+app.get("/ping", (req, res) => {
+  res.send("pong");
+});
 
-
-// ==========================================
-// 14. Ping
-// ==========================================
-
-app.get(
-  '/ping',
-  (req, res) => {
-
-    res.send('pong');
-
-  }
-);
-
-
-// ==========================================
-// 15. 測試帳號
-// ==========================================
+// ================================
+// 登入
+// ================================
 
 const accounts = {
-
   admin: {
-
-    password: 'admin123',
-
-    role: 'admin'
-
+    password: "admin123",
+    role: "admin",
+    name: "系統管理員"
   },
 
   teacher: {
-
-    password: 'teacher123',
-
-    role: 'teacher'
-
+    password: "teacher123",
+    role: "teacher",
+    name: "教師"
   }
-
 };
 
+app.post("/api/login", (req, res) => {
+  const { username, password } = req.body;
 
-// ==========================================
-// 16. 登入
-// ==========================================
+  const account = accounts[username];
 
+  if (!account || account.password !== password) {
+    return res.status(401).json({
+      success: false,
+      message: "帳號或密碼錯誤"
+    });
+  }
+
+  req.session.user = {
+    username,
+    role: account.role,
+    name: account.name
+  };
+
+  res.json({
+    success: true,
+    user: req.session.user
+  });
+});
+
+// ================================
+// 取得目前登入者
+// ================================
+
+app.get("/api/me", (req, res) => {
+  if (!req.session.user) {
+    return res.json({
+      loggedIn: false
+    });
+  }
+
+  res.json({
+    loggedIn: true,
+    user: req.session.user
+  });
+});
+
+// ================================
+// 登出
+// ================================
+
+app.post("/api/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.json({
+      success: true
+    });
+  });
+});
+
+// ================================
+// 權限
+// ================================
+
+function requireLogin(req, res, next) {
+  if (!req.session.user) {
+    return res.status(401).json({
+      success: false,
+      message: "請先登入"
+    });
+  }
+
+  next();
+}
+
+function requireAdmin(req, res, next) {
+  if (!req.session.user) {
+    return res.status(401).json({
+      success: false,
+      message: "請先登入"
+    });
+  }
+
+  if (req.session.user.role !== "admin") {
+    return res.status(403).json({
+      success: false,
+      message: "只有管理員可以執行此操作"
+    });
+  }
+
+  next();
+}
+
+// ======================================================
+// 教室課表
+// ======================================================
+
+// 取得全部教室
+app.get("/api/classrooms", requireLogin, (req, res) => {
+  res.json({
+    success: true,
+    classrooms: systemData.classrooms
+  });
+});
+
+// 取得單一教室
+app.get("/api/classrooms/:id", requireLogin, (req, res) => {
+  const id = Number(req.params.id);
+
+  const classroom = systemData.classrooms[id];
+
+  if (!classroom) {
+    return res.status(404).json({
+      success: false,
+      message: "找不到教室"
+    });
+  }
+
+  res.json({
+    success: true,
+    classroom
+  });
+});
+
+// 修改教室名稱
+app.post("/api/classrooms/:id", requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const { name } = req.body;
+
+  if (!systemData.classrooms[id]) {
+    return res.status(404).json({
+      success: false,
+      message: "找不到教室"
+    });
+  }
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: "教室名稱不可為空"
+    });
+  }
+
+  systemData.classrooms[id].name = name.trim();
+
+  // 同步機械手臂格位顯示名稱
+  if (systemData.armSlots[id]) {
+    systemData.armSlots[id].roomName = name.trim();
+  }
+
+  saveData();
+
+  res.json({
+    success: true,
+    classroom: systemData.classrooms[id]
+  });
+});
+
+// 新增課表
 app.post(
-  '/api/login',
+  "/api/classrooms/:id/schedules",
+  requireAdmin,
   (req, res) => {
+    const id = Number(req.params.id);
 
     const {
-      username,
-      password
+      className,
+      weekday,
+      startTime,
+      endTime
     } = req.body;
 
+    if (!systemData.classrooms[id]) {
+      return res.status(404).json({
+        success: false,
+        message: "找不到教室"
+      });
+    }
 
-    if (
-      !username ||
-      !password
-    ) {
-
+    if (!className || !weekday || !startTime || !endTime) {
       return res.status(400).json({
-
         success: false,
-
-        message:
-          '請輸入帳號與密碼！'
-
+        message: "資料不完整"
       });
-
     }
-
-
-    const account =
-      accounts[username];
-
-
-    if (
-      !account ||
-      account.password !== password
-    ) {
-
-      return res.status(401).json({
-
-        success: false,
-
-        message:
-          '帳號或密碼錯誤！'
-
-      });
-
-    }
-
-
-    req.session.user = {
-
-      username,
-
-      role:
-        account.role
-
-    };
-
-
-    res.json({
-
-      success: true,
-
-      message:
-        '登入成功！',
-
-      role:
-        account.role
-
-    });
-
-  }
-);
-
-
-// ==========================================
-// 17. 取得目前登入者
-// ==========================================
-
-app.get(
-  '/api/me',
-  (req, res) => {
-
-    if (!req.session.user) {
-
-      return res.status(401).json({
-
-        success: false,
-
-        message:
-          '尚未登入'
-
-      });
-
-    }
-
-
-    res.json({
-
-      success: true,
-
-      user:
-        req.session.user
-
-    });
-
-  }
-);
-
-
-// ==========================================
-// 18. 登出
-// ==========================================
-
-app.post(
-  '/api/logout',
-  (req, res) => {
-
-    req.session.destroy(
-      () => {
-
-        res.clearCookie(
-          'connect.sid'
-        );
-
-
-        res.json({
-
-          success: true,
-
-          message:
-            '已成功登出'
-
-        });
-
-      }
-    );
-
-  }
-);
-
-
-// ==========================================
-// 19. 登入檢查
-// ==========================================
-
-function requireLogin(
-  req,
-  res,
-  next
-) {
-
-  if (!req.session.user) {
-
-    return res.status(401).json({
-
-      success: false,
-
-      message:
-        '請先登入'
-
-    });
-
-  }
-
-
-  next();
-
-}
-
-
-// ==========================================
-// 20. 管理員檢查
-// ==========================================
-
-function requireAdmin(
-  req,
-  res,
-  next
-) {
-
-  if (!req.session.user) {
-
-    return res.status(401).json({
-
-      success: false,
-
-      message:
-        '請先登入'
-
-    });
-
-  }
-
-
-  if (
-    req.session.user.role !==
-    'admin'
-  ) {
-
-    return res.status(403).json({
-
-      success: false,
-
-      message:
-        '只有管理員可以執行此操作'
-
-    });
-
-  }
-
-
-  next();
-
-}
-
-
-// ==================================================
-// ==================================================
-//                 教室課表系統
-// ==================================================
-// ==================================================
-
-
-// ==========================================
-// 21. 取得全部 8 間教室
-// ==========================================
-
-app.get(
-  '/api/classrooms',
-  requireLogin,
-  (req, res) => {
-
-    res.json({
-
-      success: true,
-
-      data:
-        systemData.classrooms
-
-    });
-
-  }
-);
-
-
-// ==========================================
-// 22. 取得單一教室
-// ==========================================
-
-app.get(
-  '/api/classrooms/:id',
-  requireLogin,
-  (req, res) => {
-
-    const id =
-      parseInt(req.params.id);
-
-
-    if (
-      isNaN(id) ||
-      id < 1 ||
-      id > 8
-    ) {
-
-      return res.status(400).json({
-
-        success: false,
-
-        message:
-          '教室編號必須為 1～8'
-
-      });
-
-    }
-
-
-    res.json({
-
-      success: true,
-
-      data:
-        systemData.classrooms[id]
-
-    });
-
-  }
-);
-
-
-// ==========================================
-// 23. 修改教室名稱
-// ==========================================
-
-app.post(
-  '/api/classrooms/:id',
-  requireAdmin,
-  (req, res) => {
-
-    const id =
-      parseInt(req.params.id);
-
-
-    if (
-      isNaN(id) ||
-      id < 1 ||
-      id > 8
-    ) {
-
-      return res.status(400).json({
-
-        success: false,
-
-        message:
-          '教室編號必須為 1～8'
-
-      });
-
-    }
-
-
-    const name =
-      String(
-        req.body.name || ''
-      ).trim();
-
-
-    if (!name) {
-
-      return res.status(400).json({
-
-        success: false,
-
-        message:
-          '教室名稱不能為空白'
-
-      });
-
-    }
-
-
-    systemData.classrooms[id].name =
-      name;
-
-
-    if (
-      !saveData(systemData)
-    ) {
-
-      return res.status(500).json({
-
-        success: false,
-
-        message:
-          '教室名稱儲存失敗'
-
-      });
-
-    }
-
-
-    res.json({
-
-      success: true,
-
-      message:
-        '教室名稱已更新',
-
-      data:
-        systemData.classrooms[id]
-
-    });
-
-  }
-);
-
-
-// ==========================================
-// 24. 新增課表
-// ==========================================
-//
-// 資料格式：
-//
-// {
-//   className: "控制二甲",
-//   weekday: "星期一",
-//   startTime: "08:00",
-//   endTime: "10:00"
-// }
-// ==========================================
-
-app.post(
-  '/api/classrooms/:id/schedules',
-  requireAdmin,
-  (req, res) => {
-
-    const classroomId =
-      parseInt(req.params.id);
-
-
-    if (
-      isNaN(classroomId) ||
-      classroomId < 1 ||
-      classroomId > 8
-    ) {
-
-      return res.status(400).json({
-
-        success: false,
-
-        message:
-          '教室編號必須為 1～8'
-
-      });
-
-    }
-
-
-    const className =
-      String(
-        req.body.className || ''
-      ).trim();
-
-
-    const weekday =
-      String(
-        req.body.weekday || ''
-      ).trim();
-
-
-    const startTime =
-      String(
-        req.body.startTime || ''
-      ).trim();
-
-
-    const endTime =
-      String(
-        req.body.endTime || ''
-      ).trim();
-
-
-    // ----------------------------------------
-    // 檢查班級
-    // ----------------------------------------
-
-    if (!className) {
-
-      return res.status(400).json({
-
-        success: false,
-
-        message:
-          '請輸入班級'
-
-      });
-
-    }
-
-
-    // ----------------------------------------
-    // 檢查星期
-    // ----------------------------------------
-
-    if (!weekday) {
-
-      return res.status(400).json({
-
-        success: false,
-
-        message:
-          '請輸入星期'
-
-      });
-
-    }
-
-
-    // ----------------------------------------
-    // 檢查時間
-    // ----------------------------------------
-
-    if (
-      !startTime ||
-      !endTime
-    ) {
-
-      return res.status(400).json({
-
-        success: false,
-
-        message:
-          '請輸入開始與結束時間'
-
-      });
-
-    }
-
-
-    // ----------------------------------------
-    // 建立唯一 ID
-    // ----------------------------------------
-
-    const scheduleId =
-      Date.now().toString() +
-      Math.floor(
-        Math.random() * 10000
-      ).toString();
-
-
-    // ----------------------------------------
-    // 建立課表
-    // ----------------------------------------
 
     const newSchedule = {
-
-      id:
-        scheduleId,
-
-      className:
-        className,
-
-      weekday:
-        weekday,
-
-      startTime:
-        startTime,
-
-      endTime:
-        endTime
-
+      id: Date.now(),
+      className,
+      weekday,
+      startTime,
+      endTime
     };
 
+    systemData.classrooms[id].schedules.push(newSchedule);
 
-    // ----------------------------------------
-    // 放入指定教室
-    // ----------------------------------------
-
-    systemData
-      .classrooms[classroomId]
-      .schedules
-      .push(newSchedule);
-
-
-    // ----------------------------------------
-    // 儲存
-    // ----------------------------------------
-
-    if (
-      !saveData(systemData)
-    ) {
-
-      return res.status(500).json({
-
-        success: false,
-
-        message:
-          '課表儲存失敗'
-
-      });
-
-    }
-
+    saveData();
 
     res.json({
-
       success: true,
-
-      message:
-        '課表新增成功！',
-
-      data:
-        newSchedule
-
+      schedule: newSchedule
     });
-
   }
 );
 
-
-// ==========================================
-// 25. 刪除課表
-// ==========================================
-
+// 刪除課表
 app.delete(
-  '/api/classrooms/:classroomId/schedules/:scheduleId',
+  "/api/classrooms/:classroomId/schedules/:scheduleId",
   requireAdmin,
   (req, res) => {
+    const classroomId = Number(req.params.classroomId);
+    const scheduleId = Number(req.params.scheduleId);
 
-    const classroomId =
-      parseInt(
-        req.params.classroomId
-      );
+    const classroom = systemData.classrooms[classroomId];
 
-
-    const scheduleId =
-      String(
-        req.params.scheduleId
-      );
-
-
-    if (
-      isNaN(classroomId) ||
-      classroomId < 1 ||
-      classroomId > 8
-    ) {
-
-      return res.status(400).json({
-
-        success: false,
-
-        message:
-          '教室編號錯誤'
-
-      });
-
-    }
-
-
-    const classroom =
-      systemData
-        .classrooms[classroomId];
-
-
-    const before =
-      classroom.schedules.length;
-
-
-    classroom.schedules =
-      classroom.schedules.filter(
-        schedule =>
-          String(schedule.id) !==
-          scheduleId
-      );
-
-
-    if (
-      classroom.schedules.length ===
-      before
-    ) {
-
+    if (!classroom) {
       return res.status(404).json({
-
         success: false,
-
-        message:
-          '找不到這筆課表'
-
+        message: "找不到教室"
       });
-
     }
 
+    classroom.schedules = classroom.schedules.filter(
+      item => item.id !== scheduleId
+    );
 
-    if (
-      !saveData(systemData)
-    ) {
-
-      return res.status(500).json({
-
-        success: false,
-
-        message:
-          '刪除後儲存失敗'
-
-      });
-
-    }
-
+    saveData();
 
     res.json({
-
-      success: true,
-
-      message:
-        '課表已刪除'
-
+      success: true
     });
-
   }
 );
 
-
-// ==========================================
-// 26. 匯入 CSV
-// ==========================================
-//
-// 格式：
-//
-// 班級,教室,星期,開始時間,結束時間
-//
-// 例如：
-//
-// 控制二甲,1,星期一,08:00,10:00
-// 電子二甲,2,星期二,10:00,12:00
-// ==========================================
+// ================================
+// 課表 CSV 匯入
+// ================================
 
 app.post(
-  '/api/classrooms/import-csv',
+  "/api/classrooms/import-csv",
   requireAdmin,
-  upload.single('file'),
+  upload.single("file"),
   (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "沒有上傳檔案"
+        });
+      }
 
-    if (!req.file) {
-
-      return res.status(400).json({
-
-        success: false,
-
-        message:
-          '請選擇 CSV / Excel 檔案'
-
+      const workbook = XLSX.read(req.file.buffer, {
+        type: "buffer"
       });
 
-    }
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
 
+      const rows = XLSX.utils.sheet_to_json(sheet);
 
-    try {
-
-      const workbook =
-        xlsx.read(
-          req.file.buffer,
-          {
-            type: 'buffer'
-          }
-        );
-
-
-      const sheet =
-        workbook.Sheets[
-          workbook.SheetNames[0]
-        ];
-
-
-      const rows =
-        xlsx.utils.sheet_to_json(
-          sheet,
-          {
-            header: 1
-          }
-        );
-
-
-      let successCount = 0;
-
-      let skipCount = 0;
-
-
-      // ----------------------------------------
-      // CSV 匯入前清空目前 8 間教室課表
-      // ----------------------------------------
-
+      // 清除目前課表
       for (let i = 1; i <= 8; i++) {
-
-        systemData
-          .classrooms[i]
-          .schedules = [];
-
+        systemData.classrooms[i].schedules = [];
       }
 
+      let count = 0;
 
-      // ----------------------------------------
-      // 逐列讀取
-      // ----------------------------------------
+      rows.forEach(row => {
+        const className = row["班級"];
+        const room = Number(row["教室"]);
+        const weekday = row["星期"];
+        const startTime = row["開始時間"];
+        const endTime = row["結束時間"];
 
-      rows.forEach(
-        (row, index) => {
+        if (
+          className &&
+          room >= 1 &&
+          room <= 8 &&
+          weekday &&
+          startTime &&
+          endTime
+        ) {
+          systemData.classrooms[room].schedules.push({
+            id: Date.now() + count,
+            className: String(className),
+            weekday: String(weekday),
+            startTime: String(startTime),
+            endTime: String(endTime)
+          });
 
-          // 第一列標題跳過
-
-          if (index === 0) {
-
-            return;
-
-          }
-
-
-          if (
-            !row ||
-            row.length < 5
-          ) {
-
-            skipCount++;
-
-            return;
-
-          }
-
-
-          const className =
-            String(
-              row[0] || ''
-            ).trim();
-
-
-          const classroomId =
-            parseInt(row[1]);
-
-
-          const weekday =
-            String(
-              row[2] || ''
-            ).trim();
-
-
-          const startTime =
-            String(
-              row[3] || ''
-            ).trim();
-
-
-          const endTime =
-            String(
-              row[4] || ''
-            ).trim();
-
-
-          if (
-            !className ||
-            isNaN(classroomId) ||
-            classroomId < 1 ||
-            classroomId > 8 ||
-            !weekday ||
-            !startTime ||
-            !endTime
-          ) {
-
-            skipCount++;
-
-            return;
-
-          }
-
-
-          const schedule = {
-
-            id:
-              Date.now().toString() +
-              Math.floor(
-                Math.random() * 1000000
-              ).toString(),
-
-            className,
-
-            weekday,
-
-            startTime,
-
-            endTime
-
-          };
-
-
-          systemData
-            .classrooms[classroomId]
-            .schedules
-            .push(schedule);
-
-
-          successCount++;
-
+          count++;
         }
-      );
+      });
 
-
-      if (
-        !saveData(systemData)
-      ) {
-
-        return res.status(500).json({
-
-          success: false,
-
-          message:
-            'CSV 匯入後儲存失敗'
-
-        });
-
-      }
-
+      saveData();
 
       res.json({
-
         success: true,
-
-        message:
-          `CSV 匯入完成！成功 ${successCount} 筆，略過 ${skipCount} 筆。`
-
+        message: `成功匯入 ${count} 筆課表`
       });
 
     } catch (error) {
-
-      console.error(
-        'CSV 匯入失敗：',
-        error
-      );
-
+      console.error(error);
 
       res.status(500).json({
-
         success: false,
-
-        message:
-          'CSV 解析失敗：' +
-          error.message
-
+        message: "CSV 匯入失敗"
       });
-
     }
-
   }
 );
 
-
-// ==========================================
-// 27. 匯出課表
-// ==========================================
+// ================================
+// 課表 CSV 匯出
+// ================================
 
 app.get(
-  '/api/classrooms/export-csv',
-  requireLogin,
-  (req, res) => {
-
-    const rows = [];
-
-
-    rows.push([
-
-      '班級',
-
-      '教室',
-
-      '星期',
-
-      '開始時間',
-
-      '結束時間'
-
-    ]);
-
-
-    for (let i = 1; i <= 8; i++) {
-
-      const classroom =
-        systemData.classrooms[i];
-
-
-      classroom.schedules.forEach(
-        schedule => {
-
-          rows.push([
-
-            schedule.className,
-
-            i,
-
-            schedule.weekday,
-
-            schedule.startTime,
-
-            schedule.endTime
-
-          ]);
-
-        }
-      );
-
-    }
-
-
-    const worksheet =
-      xlsx.utils.aoa_to_sheet(
-        rows
-      );
-
-
-    const workbook =
-      xlsx.utils.book_new();
-
-
-    xlsx.utils.book_append_sheet(
-      workbook,
-      worksheet,
-      '教室課表'
-    );
-
-
-    const buffer =
-      xlsx.write(
-        workbook,
-        {
-          type: 'buffer',
-          bookType: 'csv'
-        }
-      );
-
-
-    res.setHeader(
-      'Content-Type',
-      'text/csv; charset=utf-8'
-    );
-
-
-    res.setHeader(
-      'Content-Disposition',
-      'attachment; filename="classroom_schedule.csv"'
-    );
-
-
-    res.send(buffer);
-
-  }
-);
-
-
-// ==================================================
-// ==================================================
-//                 機械手臂 8 格
-// ==================================================
-// ==================================================
-
-
-// ==========================================
-// 28. 取得機械手臂格位
-// ==========================================
-
-app.get(
-  '/api/arm/slots',
-  requireLogin,
-  (req, res) => {
-
-    res.json({
-
-      success: true,
-
-      data:
-        systemData.armSlots
-
-    });
-
-  }
-);
-
-
-// ==========================================
-// 29. 更新機械手臂格位
-// ==========================================
-
-app.post(
-  '/api/arm/slot/:id',
+  "/api/classrooms/export-csv",
   requireAdmin,
   (req, res) => {
+    const rows = [];
 
-    const slotId =
-      req.params.id;
+    for (let i = 1; i <= 8; i++) {
+      const classroom = systemData.classrooms[i];
 
-
-    if (
-      !systemData.armSlots[slotId]
-    ) {
-
-      return res.status(404).json({
-
-        success: false,
-
-        message:
-          '無此格位編號（僅限 1～8）'
-
+      classroom.schedules.forEach(schedule => {
+        rows.push({
+          "班級": schedule.className,
+          "教室": i,
+          "星期": schedule.weekday,
+          "開始時間": schedule.startTime,
+          "結束時間": schedule.endTime
+        });
       });
-
     }
 
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      "教室課表"
+    );
+
+    const buffer = XLSX.write(workbook, {
+      type: "buffer",
+      bookType: "csv"
+    });
+
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=classroom_schedule.csv"
+    );
+
+    res.setHeader(
+      "Content-Type",
+      "text/csv; charset=utf-8"
+    );
+
+    res.send(buffer);
+  }
+);
+
+// ======================================================
+// 機械手臂 8 格
+// ======================================================
+
+app.get(
+  "/api/arm/slots",
+  requireLogin,
+  (req, res) => {
+    res.json({
+      success: true,
+      slots: systemData.armSlots
+    });
+  }
+);
+
+// 修改單一格位
+app.post(
+  "/api/arm/slot/:id",
+  requireAdmin,
+  (req, res) => {
+    const id = Number(req.params.id);
+
+    if (!systemData.armSlots[id]) {
+      return res.status(404).json({
+        success: false,
+        message: "找不到格位"
+      });
+    }
 
     const {
       roomName,
       keyName,
-      borrower
+      borrower,
+      borrowTime,
+      status
     } = req.body;
 
-
-    if (
-      roomName !== undefined
-    ) {
-
-      systemData
-        .armSlots[slotId]
-        .roomName =
-        String(roomName).trim();
-
+    if (roomName !== undefined) {
+      systemData.armSlots[id].roomName = roomName;
     }
 
-
-    if (
-      keyName !== undefined
-    ) {
-
-      systemData
-        .armSlots[slotId]
-        .keyName =
-        String(keyName).trim();
-
+    if (keyName !== undefined) {
+      systemData.armSlots[id].keyName = keyName;
     }
 
-
-    if (
-      borrower !== undefined
-    ) {
-
-      const name =
-        String(borrower).trim();
-
-
-      systemData
-        .armSlots[slotId]
-        .borrower =
-        name;
-
-
-      if (name) {
-
-        systemData
-          .armSlots[slotId]
-          .borrowTime =
-          new Date().toLocaleString(
-            'zh-TW',
-            {
-              timeZone:
-                'Asia/Taipei'
-            }
-          );
-
-      } else {
-
-        systemData
-          .armSlots[slotId]
-          .borrowTime = '';
-
-      }
-
+    if (borrower !== undefined) {
+      systemData.armSlots[id].borrower = borrower;
     }
 
-
-    if (
-      !saveData(systemData)
-    ) {
-
-      return res.status(500).json({
-
-        success: false,
-
-        message:
-          '格位資料儲存失敗'
-
-      });
-
+    if (borrowTime !== undefined) {
+      systemData.armSlots[id].borrowTime = borrowTime;
     }
 
+    if (status !== undefined) {
+      systemData.armSlots[id].status = status;
+    }
+
+    saveData();
 
     res.json({
-
       success: true,
-
-      message:
-        `格位 ${slotId} 已更新`
-
+      slot: systemData.armSlots[id]
     });
-
   }
 );
 
-
-// ==========================================
-// 30. 機械手臂 CSV
-// ==========================================
-
+// 重設所有格位
 app.post(
-  '/api/arm/upload-csv',
+  "/api/arm/reset-all",
   requireAdmin,
-  upload.single('file'),
+  (req, res) => {
+    systemData.armSlots = getDefaultArmSlots();
+
+    saveData();
+
+    res.json({
+      success: true,
+      slots: systemData.armSlots
+    });
+  }
+);
+
+// ======================================================
+// 臨時借用系統
+// ======================================================
+
+// 取得臨時借用申請
+app.get(
+  "/api/temporary-bookings",
+  requireLogin,
   (req, res) => {
 
-    if (!req.file) {
+    let bookings = systemData.temporaryBookings;
 
-      return res.status(400).json({
-
-        success: false,
-
-        message:
-          '請選擇 CSV / Excel 檔案'
-
-      });
-
+    // 老師只能看到自己申請的
+    if (req.session.user.role !== "admin") {
+      bookings = bookings.filter(
+        item => item.applicant === req.session.user.username
+      );
     }
 
+    res.json({
+      success: true,
+      bookings
+    });
+  }
+);
 
-    try {
+// ======================================================
+// 新增臨時借用申請
+// ======================================================
 
-      const workbook =
-        xlsx.read(
-          req.file.buffer,
-          {
-            type: 'buffer'
-          }
-        );
+app.post(
+  "/api/temporary-bookings",
+  requireLogin,
+  (req, res) => {
 
+    const {
+      className,
+      classroomId,
+      date,
+      startTime,
+      endTime,
+      reason
+    } = req.body;
 
-      const sheet =
-        workbook.Sheets[
-          workbook.SheetNames[0]
-        ];
+    const roomId = Number(classroomId);
 
+    if (
+      !className ||
+      !roomId ||
+      !date ||
+      !startTime ||
+      !endTime
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "請完整填寫申請資料"
+      });
+    }
 
-      const rows =
-        xlsx.utils.sheet_to_json(
-          sheet,
-          {
-            header: 1
-          }
-        );
+    if (!systemData.classrooms[roomId]) {
+      return res.status(400).json({
+        success: false,
+        message: "教室不存在"
+      });
+    }
 
+    if (startTime >= endTime) {
+      return res.status(400).json({
+        success: false,
+        message: "結束時間必須晚於開始時間"
+      });
+    }
 
-      let count = 0;
+    // ================================
+    // 檢查同一天臨時借用是否衝突
+    // ================================
 
+    const conflict = systemData.temporaryBookings.some(item => {
 
-      rows.forEach(
-        (row) => {
+      if (item.classroomId !== roomId) {
+        return false;
+      }
 
-          if (
-            !row ||
-            row.length < 2
-          ) {
-
-            return;
-
-          }
-
-
-          const slotId =
-            parseInt(row[0]);
-
-
-          if (
-            isNaN(slotId) ||
-            slotId < 1 ||
-            slotId > 8
-          ) {
-
-            return;
-
-          }
-
-
-          const roomName =
-            String(
-              row[1] || ''
-            ).trim();
-
-
-          const keyName =
-            row[2]
-              ? String(row[2]).trim()
-              : `教室 ${slotId} 鑰匙`;
-
-
-          const borrower =
-            row[3]
-              ? String(row[3]).trim()
-              : '';
-
-
-          systemData.armSlots[slotId] = {
-
-            slotId,
-
-            roomName,
-
-            keyName,
-
-            borrower,
-
-            borrowTime:
-              borrower
-                ? new Date().toLocaleString(
-                    'zh-TW',
-                    {
-                      timeZone:
-                        'Asia/Taipei'
-                    }
-                  )
-                : ''
-
-          };
-
-
-          count++;
-
-        }
-      );
-
+      if (item.date !== date) {
+        return false;
+      }
 
       if (
-        !saveData(systemData)
+        item.status === "rejected" ||
+        item.status === "completed"
       ) {
-
-        return res.status(500).json({
-
-          success: false,
-
-          message:
-            '機械手臂資料儲存失敗'
-
-        });
-
+        return false;
       }
 
+      return (
+        startTime < item.endTime &&
+        endTime > item.startTime
+      );
+    });
 
-      res.json({
-
-        success: true,
-
-        message:
-          `成功更新 ${count} 個格位`
-
-      });
-
-    } catch (error) {
-
-      res.status(500).json({
-
+    if (conflict) {
+      return res.status(409).json({
         success: false,
-
-        message:
-          '解析失敗：' +
-          error.message
-
+        message: "此教室在這個時間已有臨時借用申請"
       });
-
     }
 
+    // ================================
+    // 建立申請
+    // ================================
+
+    const booking = {
+      id: Date.now(),
+
+      className,
+
+      classroomId: roomId,
+
+      classroomName:
+        systemData.classrooms[roomId].name,
+
+      date,
+
+      startTime,
+
+      endTime,
+
+      reason: reason || "",
+
+      applicant:
+        req.session.user.username,
+
+      applicantName:
+        req.session.user.name,
+
+      status: "pending",
+
+      statusText: "待審核",
+
+      slotId: null,
+
+      createdAt:
+        new Date().toISOString(),
+
+      approvedAt: null,
+
+      rejectedAt: null
+    };
+
+    systemData.temporaryBookings.push(booking);
+
+    saveData();
+
+    res.json({
+      success: true,
+      booking
+    });
   }
 );
 
-
-// ==========================================
-// 31. 重置機械手臂
-// ==========================================
+// ======================================================
+// 管理員核准
+// ======================================================
 
 app.post(
-  '/api/arm/reset-all',
+  "/api/temporary-bookings/:id/approve",
   requireAdmin,
   (req, res) => {
 
-    systemData.armSlots =
-      getDefaultArmSlots();
+    const id = Number(req.params.id);
 
+    const booking =
+      systemData.temporaryBookings.find(
+        item => item.id === id
+      );
 
-    if (
-      !saveData(systemData)
-    ) {
-
-      return res.status(500).json({
-
+    if (!booking) {
+      return res.status(404).json({
         success: false,
-
-        message:
-          '重置失敗'
-
+        message: "找不到申請"
       });
-
     }
 
+    if (booking.status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "此申請目前無法核准"
+      });
+    }
+
+    const slotId =
+      Number(req.body.slotId);
+
+    if (!slotId || !systemData.armSlots[slotId]) {
+      return res.status(400).json({
+        success: false,
+        message: "請選擇有效的機械手臂格位"
+      });
+    }
+
+    const slot =
+      systemData.armSlots[slotId];
+
+    if (
+      slot.status !== "空閒"
+    ) {
+      return res.status(409).json({
+        success: false,
+        message: `機械手臂第 ${slotId} 格目前不是空閒狀態`
+      });
+    }
+
+    // ================================
+    // 核准
+    // ================================
+
+    booking.status = "approved";
+    booking.statusText = "已核准";
+
+    booking.slotId = slotId;
+
+    booking.approvedAt =
+      new Date().toISOString();
+
+    // ================================
+    // 更新機械手臂格位
+    // ================================
+
+    slot.status = "待借出";
+
+    slot.bookingId = booking.id;
+
+    slot.borrower =
+      booking.className;
+
+    slot.borrowTime =
+      `${booking.date} ${booking.startTime}~${booking.endTime}`;
+
+    slot.roomName =
+      booking.classroomName;
+
+    saveData();
 
     res.json({
-
       success: true,
-
-      message:
-        '機械手臂 8 格已重置'
-
+      booking,
+      slot
     });
-
   }
 );
 
+// ======================================================
+// 管理員拒絕
+// ======================================================
 
-// ==========================================
-// 32. 啟動
-// ==========================================
+app.post(
+  "/api/temporary-bookings/:id/reject",
+  requireAdmin,
+  (req, res) => {
 
-const PORT =
-  process.env.PORT || 10000;
+    const id = Number(req.params.id);
 
+    const booking =
+      systemData.temporaryBookings.find(
+        item => item.id === id
+      );
 
-app.listen(
-  PORT,
-  () => {
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "找不到申請"
+      });
+    }
 
-    console.log(
-      `Server running on port ${PORT}`
-    );
+    if (booking.status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "此申請目前無法拒絕"
+      });
+    }
 
+    booking.status = "rejected";
+    booking.statusText = "已拒絕";
+
+    booking.rejectedAt =
+      new Date().toISOString();
+
+    saveData();
+
+    res.json({
+      success: true,
+      booking
+    });
   }
 );
+
+// ======================================================
+// 標記為完成
+// ======================================================
+
+app.post(
+  "/api/temporary-bookings/:id/complete",
+  requireAdmin,
+  (req, res) => {
+
+    const id = Number(req.params.id);
+
+    const booking =
+      systemData.temporaryBookings.find(
+        item => item.id === id
+      );
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "找不到申請"
+      });
+    }
+
+    if (booking.status !== "approved") {
+      return res.status(400).json({
+        success: false,
+        message: "只有已核准的申請可以完成"
+      });
+    }
+
+    booking.status = "completed";
+    booking.statusText = "已完成";
+
+    // ================================
+    // 釋放機械手臂格位
+    // ================================
+
+    if (
+      booking.slotId &&
+      systemData.armSlots[booking.slotId]
+    ) {
+
+      const slot =
+        systemData.armSlots[booking.slotId];
+
+      slot.status = "空閒";
+      slot.bookingId = null;
+      slot.borrower = "";
+      slot.borrowTime = "";
+    }
+
+    saveData();
+
+    res.json({
+      success: true,
+      booking
+    });
+  }
+);
+
+// ======================================================
+// 取得單一臨時申請
+// ======================================================
+
+app.get(
+  "/api/temporary-bookings/:id",
+  requireLogin,
+  (req, res) => {
+
+    const id = Number(req.params.id);
+
+    const booking =
+      systemData.temporaryBookings.find(
+        item => item.id === id
+      );
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "找不到申請"
+      });
+    }
+
+    // 老師不能查看別人的申請
+    if (
+      req.session.user.role !== "admin" &&
+      booking.applicant !== req.session.user.username
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "沒有權限"
+      });
+    }
+
+    res.json({
+      success: true,
+      booking
+    });
+  }
+);
+
+// ======================================================
+// 啟動伺服器
+// ======================================================
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
