@@ -7,6 +7,7 @@ const classroomsRouter = require("./routes/classrooms");
 const armRouter = require("./routes/arm");
 const temporaryRouter = require("./routes/temporary");
 const acCardRouter = require("./routes/ac-card");
+const accountsRouter = require("./routes/accounts");
 
 const app = express();
 
@@ -57,6 +58,9 @@ app.use("/api", temporaryRouter);
 
 // 冷氣卡管理
 app.use("/api", acCardRouter);
+
+// 帳號管理
+app.use("/api", accountsRouter);
 
 // ================================
 // 匯出 App
