@@ -3,65 +3,110 @@ let bookings = [];
 let slots = [];
 
 
-/* =========================================================
-   頁面初始化
-   ========================================================= */
+// =========================================================
+// 即時檢測設定
+// =========================================================
+
+const REALTIME_CHECK_INTERVAL = 10000;
+
+let realtimeCheckTimer = null;
+let realtimeChecking = false;
+
+
+// =========================================================
+// 頁面初始化
+// =========================================================
 
 document.addEventListener("DOMContentLoaded", () => {
 
-  const identity = document.getElementById("identity");
+  const identity =
+    document.getElementById("identity");
 
   if (identity) {
+
     identity.addEventListener(
       "change",
       updateIdentityFields
     );
+
   }
 
   updateIdentityFields();
+
   loadUser();
 
 });
 
 
-/* =========================================================
-   取得登入者
-   ========================================================= */
+// =========================================================
+// 取得登入者
+// =========================================================
 
 async function loadUser() {
 
   try {
 
-    const response = await fetch("/api/me");
+    const response =
+      await fetch("/api/me");
+
 
     if (!response.ok) {
-      window.location.href = "/index.html";
+
+      window.location.href =
+        "/index.html";
+
       return;
+
     }
 
-    const result = await response.json();
+
+    const result =
+      await response.json();
+
 
     if (!result.loggedIn) {
-      window.location.href = "/index.html";
+
+      window.location.href =
+        "/index.html";
+
       return;
+
     }
 
-    currentUser = result.user;
+
+    currentUser =
+      result.user;
+
 
     const userInfo =
-      document.getElementById("userInfo");
+      document.getElementById(
+        "userInfo"
+      );
+
 
     if (userInfo) {
+
       userInfo.textContent =
         `目前登入：${currentUser.name}（${
           currentUser.role === "admin"
             ? "管理員"
             : "老師"
         }）`;
+
     }
 
+
     await loadBookings();
+
     await loadSlots();
+
+
+    // ==================================================
+    // ★ 啟動即時檢測
+    // ==================================================
+
+    startRealtimeCheck();
+
 
   } catch (error) {
 
@@ -80,98 +125,325 @@ async function loadUser() {
 }
 
 
-/* =========================================================
-   身分欄位控制
-   ========================================================= */
+// =========================================================
+// ★ 啟動即時檢測
+// =========================================================
 
-function updateIdentityFields() {
+function startRealtimeCheck() {
 
-  const identity =
-    document.getElementById("identity");
+  // 防止重複啟動
+  stopRealtimeCheck();
 
-  const className =
-    document.getElementById("className");
 
-  const studentId =
-    document.getElementById("studentId");
-
+  // 只有管理員可以執行逾期檢查
   if (
-    !identity ||
-    !className ||
-    !studentId
+    !currentUser ||
+    currentUser.role !== "admin"
   ) {
+
+    console.log(
+      "即時逾期檢測：一般使用者不啟動"
+    );
+
     return;
+
   }
 
 
-  if (identity.value === "teacher") {
+  console.log(
+    "即時逾期檢測已啟動：每 10 秒檢查一次"
+  );
 
-    className.value = "";
-    studentId.value = "";
 
-    className.disabled = true;
-    studentId.disabled = true;
+  // 先立即檢查一次
+  runRealtimeCheck();
 
-    className.placeholder = "老師免填";
-    studentId.placeholder = "老師免填";
 
-  } else if (identity.value === "student") {
+  // 每 10 秒檢查一次
+  realtimeCheckTimer =
+    setInterval(
+      runRealtimeCheck,
+      REALTIME_CHECK_INTERVAL
+    );
 
-    className.disabled = false;
-    studentId.disabled = false;
+}
 
-    className.placeholder = "例如：控制二甲";
-    studentId.placeholder = "例如：91123456";
 
-  } else {
+// =========================================================
+// 停止即時檢測
+// =========================================================
 
-    className.disabled = false;
-    studentId.disabled = false;
+function stopRealtimeCheck() {
 
-    className.placeholder = "請先選擇身分";
-    studentId.placeholder = "請先選擇身分";
+  if (
+    realtimeCheckTimer !== null
+  ) {
+
+    clearInterval(
+      realtimeCheckTimer
+    );
+
+    realtimeCheckTimer =
+      null;
 
   }
 
 }
 
 
-/* =========================================================
-   載入申請資料
-   ========================================================= */
+// =========================================================
+// ★ 執行即時逾期檢查
+// =========================================================
+
+async function runRealtimeCheck() {
+
+  if (
+    realtimeChecking
+  ) {
+
+    return;
+
+  }
+
+
+  if (
+    !currentUser ||
+    currentUser.role !== "admin"
+  ) {
+
+    return;
+
+  }
+
+
+  realtimeChecking =
+    true;
+
+
+  try {
+
+    const response =
+      await fetch(
+        "/api/temporary-bookings/check-overdue",
+        {
+          method: "POST"
+        }
+      );
+
+
+    if (
+      response.status === 401 ||
+      response.status === 403
+    ) {
+
+      console.warn(
+        "即時逾期檢查沒有權限"
+      );
+
+      stopRealtimeCheck();
+
+      return;
+
+    }
+
+
+    const result =
+      await response.json();
+
+
+    if (!result.success) {
+
+      console.warn(
+        "即時逾期檢查失敗：",
+        result.message
+      );
+
+      return;
+
+    }
+
+
+    // ==================================================
+    // 如果有狀態改變
+    // 才特別重新載入資料
+    // ==================================================
+
+    if (
+      Number(result.updatedCount) > 0
+    ) {
+
+      console.log(
+        `即時檢測：發現 ${result.updatedCount} 筆逾期`
+      );
+
+    }
+
+
+    // 即使沒有逾期，也刷新格位
+    // 確保頁面顯示最新狀態
+    await loadBookings();
+
+    await loadSlots();
+
+
+  } catch (error) {
+
+    console.warn(
+      "即時逾期檢查連線失敗：",
+      error.message
+    );
+
+  } finally {
+
+    realtimeChecking =
+      false;
+
+  }
+
+}
+
+
+// =========================================================
+// 身分欄位控制
+// =========================================================
+
+function updateIdentityFields() {
+
+  const identity =
+    document.getElementById(
+      "identity"
+    );
+
+  const className =
+    document.getElementById(
+      "className"
+    );
+
+  const studentId =
+    document.getElementById(
+      "studentId"
+    );
+
+
+  if (
+    !identity ||
+    !className ||
+    !studentId
+  ) {
+
+    return;
+
+  }
+
+
+  if (
+    identity.value ===
+    "teacher"
+  ) {
+
+    className.value =
+      "";
+
+    studentId.value =
+      "";
+
+    className.disabled =
+      true;
+
+    studentId.disabled =
+      true;
+
+    className.placeholder =
+      "老師免填";
+
+    studentId.placeholder =
+      "老師免填";
+
+  } else if (
+    identity.value ===
+    "student"
+  ) {
+
+    className.disabled =
+      false;
+
+    studentId.disabled =
+      false;
+
+    className.placeholder =
+      "例如：控制二甲";
+
+    studentId.placeholder =
+      "例如：91123456";
+
+  } else {
+
+    className.disabled =
+      false;
+
+    studentId.disabled =
+      false;
+
+    className.placeholder =
+      "請先選擇身分";
+
+    studentId.placeholder =
+      "請先選擇身分";
+
+  }
+
+}
+
+
+// =========================================================
+// 載入申請資料
+// =========================================================
 
 async function loadBookings() {
 
   try {
 
     const response =
-      await fetch("/api/temporary-bookings");
+      await fetch(
+        "/api/temporary-bookings"
+      );
+
 
     const result =
       await response.json();
 
+
     if (!result.success) {
 
-      alert(
+      console.warn(
         result.message ||
         "無法取得申請資料"
       );
 
       return;
+
     }
 
-    bookings = result.bookings || [];
+
+    bookings =
+      result.bookings || [];
+
 
     bookings.sort(
       (a, b) => {
 
         return (
-          new Date(b.createdAt || 0) -
-          new Date(a.createdAt || 0)
+          new Date(
+            b.createdAt || 0
+          ) -
+          new Date(
+            a.createdAt || 0
+          )
         );
 
       }
     );
+
 
     renderBookings();
 
@@ -187,38 +459,55 @@ async function loadBookings() {
 }
 
 
-/* =========================================================
-   取得申請狀態文字
-   ========================================================= */
+// =========================================================
+// 取得申請狀態文字
+// =========================================================
 
-function getBookingStatusText(booking) {
+function getBookingStatusText(
+  booking
+) {
 
-  switch (booking.status) {
+  switch (
+    booking.status
+  ) {
 
     case "pending":
     case "申請中":
+
       return "待審核";
+
 
     case "approved":
     case "已核准／待執行":
+
       return "已核准／待執行";
+
 
     case "borrowed":
     case "已借出":
+
       return "已借出";
+
 
     case "rejected":
     case "已駁回":
+
       return "已駁回";
+
 
     case "completed":
     case "已完成":
+
       return "已完成";
 
+
     case "已逾期歸還":
+
       return "已逾期歸還";
 
+
     default:
+
       return (
         booking.statusText ||
         booking.status ||
@@ -230,22 +519,32 @@ function getBookingStatusText(booking) {
 }
 
 
-/* =========================================================
-   顯示申請列表
-   ========================================================= */
+// =========================================================
+// 顯示申請列表
+// =========================================================
 
 function renderBookings() {
 
   const table =
-    document.getElementById("bookingTable");
+    document.getElementById(
+      "bookingTable"
+    );
+
 
   if (!table) {
+
     return;
+
   }
 
-  table.innerHTML = "";
 
-  if (bookings.length === 0) {
+  table.innerHTML =
+    "";
+
+
+  if (
+    bookings.length === 0
+  ) {
 
     table.innerHTML = `
       <tr>
@@ -259,253 +558,283 @@ function renderBookings() {
     `;
 
     return;
+
   }
 
 
-  bookings.forEach(booking => {
+  bookings.forEach(
+    booking => {
 
-    const tr =
-      document.createElement("tr");
-
-
-    /* =========================
-       身分文字
-       ========================= */
-
-    const identityText =
-      booking.identity === "teacher"
-        ? "老師"
-        : "學生";
+      const tr =
+        document.createElement(
+          "tr"
+        );
 
 
-    /* =========================
-       操作按鈕
-       ========================= */
-
-    let actionHTML = "-";
-
-
-    /* 待審核 */
-
-    if (
-      currentUser &&
-      currentUser.role === "admin" &&
-      (
-        booking.status === "pending" ||
-        booking.status === "申請中"
-      )
-    ) {
-
-      actionHTML = `
-        <button
-          class="btn-primary"
-          onclick="approveBooking(${booking.id})"
-        >
-          核准
-        </button>
-
-        <button
-          class="btn-danger"
-          onclick="rejectBooking(${booking.id})"
-        >
-          駁回
-        </button>
-      `;
-
-    }
+      const identityText =
+        booking.identity ===
+        "teacher"
+          ? "老師"
+          : "學生";
 
 
-    /* 已核准／待執行 */
-
-    else if (
-      currentUser &&
-      currentUser.role === "admin" &&
-      (
-        booking.status === "approved" ||
-        booking.status === "已核准／待執行"
-      )
-    ) {
-
-      actionHTML = `
-        <button
-          class="btn-primary"
-          onclick="simulateBorrowed(${booking.id})"
-        >
-          🔧 模擬借出
-        </button>
-      `;
-
-    }
+      let actionHTML =
+        "-";
 
 
-    /* 已借出／逾期 */
+      // 待審核
+      if (
+        currentUser &&
+        currentUser.role ===
+          "admin" &&
+        (
+          booking.status ===
+            "pending" ||
+          booking.status ===
+            "申請中"
+        )
+      ) {
 
-else if (
-  currentUser &&
-  currentUser.role === "admin" &&
-  (
-    booking.status === "borrowed" ||
-    booking.status === "已借出" ||
-    booking.status === "已逾期歸還"
-  )
-) {
-
-  actionHTML = `
-    <button
-      class="btn-success"
-      onclick="completeBooking(${booking.id})"
-    >
-      完成借還
-    </button>
-
-    ${
-      booking.status === "borrowed" ||
-      booking.status === "已借出"
-        ? `
+        actionHTML = `
           <button
             class="btn-primary"
-            onclick="testOverdue(${booking.id})"
+            onclick="approveBooking(${booking.id})"
           >
-            🕐 測試逾期
+            核准
           </button>
-        `
-        : ""
+
+          <button
+            class="btn-danger"
+            onclick="rejectBooking(${booking.id})"
+          >
+            駁回
+          </button>
+        `;
+
+      }
+
+
+      // 已核准／待執行
+      else if (
+        currentUser &&
+        currentUser.role ===
+          "admin" &&
+        (
+          booking.status ===
+            "approved" ||
+          booking.status ===
+            "已核准／待執行"
+        )
+      ) {
+
+        actionHTML = `
+          <button
+            class="btn-primary"
+            onclick="simulateBorrowed(${booking.id})"
+          >
+            🔧 模擬借出
+          </button>
+        `;
+
+      }
+
+
+      // 已借出／逾期
+      else if (
+        currentUser &&
+        currentUser.role ===
+          "admin" &&
+        (
+          booking.status ===
+            "borrowed" ||
+          booking.status ===
+            "已借出" ||
+          booking.status ===
+            "已逾期歸還"
+        )
+      ) {
+
+        actionHTML = `
+          <button
+            class="btn-success"
+            onclick="completeBooking(${booking.id})"
+          >
+            完成借還
+          </button>
+
+          ${
+            booking.status ===
+              "borrowed" ||
+            booking.status ===
+              "已借出"
+              ? `
+                <button
+                  class="btn-primary"
+                  onclick="testOverdue(${booking.id})"
+                >
+                  🕐 測試逾期
+                </button>
+              `
+              : ""
+          }
+        `;
+
+      }
+
+
+      let slotText =
+        "尚未分配";
+
+
+      if (
+        booking.slotId !== null &&
+        booking.slotId !== undefined
+      ) {
+
+        slotText =
+          `第 ${booking.slotId} 格`;
+
+      }
+
+
+      tr.innerHTML = `
+
+        <td>
+          ${escapeHTML(
+            getBookingStatusText(
+              booking
+            )
+          )}
+        </td>
+
+        <td>
+          ${escapeHTML(
+            identityText
+          )}
+        </td>
+
+        <td>
+          ${escapeHTML(
+            booking.className ||
+            "-"
+          )}
+        </td>
+
+        <td>
+          ${escapeHTML(
+            booking.applicantName ||
+            "-"
+          )}
+        </td>
+
+        <td>
+          ${escapeHTML(
+            booking.studentId ||
+            "-"
+          )}
+        </td>
+
+        <td>
+          ${escapeHTML(
+            booking.classroomName ||
+            booking.classroom ||
+            "-"
+          )}
+        </td>
+
+        <td>
+          ${escapeHTML(
+            booking.date ||
+            "-"
+          )}
+        </td>
+
+        <td>
+          ${escapeHTML(
+            booking.startTime ||
+            ""
+          )}
+          -
+          ${escapeHTML(
+            booking.endTime ||
+            ""
+          )}
+        </td>
+
+        <td>
+          ${escapeHTML(
+            slotText
+          )}
+        </td>
+
+        <td>
+          ${actionHTML}
+        </td>
+
+      `;
+
+
+      table.appendChild(
+        tr
+      );
+
     }
-  `;
+  );
 
 }
 
 
-    /* =========================
-       機械手臂格位
-       ========================= */
-
-    let slotText = "尚未分配";
-
-    if (
-      booking.slotId !== null &&
-      booking.slotId !== undefined
-    ) {
-
-      slotText =
-        `第 ${booking.slotId} 格`;
-
-    }
-
-
-    /* =========================
-       建立表格
-       ========================= */
-
-    tr.innerHTML = `
-
-      <td>
-        ${escapeHTML(
-          getBookingStatusText(booking)
-        )}
-      </td>
-
-      <td>
-        ${escapeHTML(identityText)}
-      </td>
-
-      <td>
-        ${escapeHTML(
-          booking.className || "-"
-        )}
-      </td>
-
-      <td>
-        ${escapeHTML(
-          booking.applicantName || "-"
-        )}
-      </td>
-
-      <td>
-        ${escapeHTML(
-          booking.studentId || "-"
-        )}
-      </td>
-
-      <td>
-        ${escapeHTML(
-          booking.classroomName ||
-          booking.classroom ||
-          "-"
-        )}
-      </td>
-
-      <td>
-        ${escapeHTML(
-          booking.date || "-"
-        )}
-      </td>
-
-      <td>
-        ${escapeHTML(
-          booking.startTime || ""
-        )}
-        -
-        ${escapeHTML(
-          booking.endTime || ""
-        )}
-      </td>
-
-      <td>
-        ${escapeHTML(slotText)}
-      </td>
-
-      <td>
-        ${actionHTML}
-      </td>
-
-    `;
-
-
-    table.appendChild(tr);
-
-  });
-
-}
-
-
-/* =========================================================
-   送出申請
-   ========================================================= */
+// =========================================================
+// 送出申請
+// =========================================================
 
 async function submitBooking() {
 
   const identity =
-    document.getElementById("identity").value;
+    document.getElementById(
+      "identity"
+    ).value;
 
   const className =
-    document.getElementById("className").value.trim();
+    document.getElementById(
+      "className"
+    ).value.trim();
 
   const applicantName =
-    document.getElementById("applicantName").value.trim();
+    document.getElementById(
+      "applicantName"
+    ).value.trim();
 
   const studentId =
-    document.getElementById("studentId").value.trim();
+    document.getElementById(
+      "studentId"
+    ).value.trim();
 
   const classroomId =
-    document.getElementById("classroom").value;
+    document.getElementById(
+      "classroom"
+    ).value;
 
   const date =
-    document.getElementById("date").value;
+    document.getElementById(
+      "date"
+    ).value;
 
   const startTime =
-    document.getElementById("startTime").value;
+    document.getElementById(
+      "startTime"
+    ).value;
 
   const endTime =
-    document.getElementById("endTime").value;
+    document.getElementById(
+      "endTime"
+    ).value;
 
   const reason =
-    document.getElementById("reason").value.trim();
+    document.getElementById(
+      "reason"
+    ).value.trim();
 
-
-  /* =========================
-     基本檢查
-     ========================= */
 
   if (!identity) {
 
@@ -523,18 +852,27 @@ async function submitBooking() {
   }
 
 
-  if (identity === "student") {
+  if (
+    identity ===
+    "student"
+  ) {
 
     if (!className) {
 
-      alert("學生必須填寫班級");
+      alert(
+        "學生必須填寫班級"
+      );
+
       return;
 
     }
 
     if (!studentId) {
 
-      alert("學生必須填寫學號");
+      alert(
+        "學生必須填寫學號"
+      );
+
       return;
 
     }
@@ -544,7 +882,10 @@ async function submitBooking() {
 
   if (!classroomId) {
 
-    alert("請選擇教室");
+    alert(
+      "請選擇教室"
+    );
+
     return;
 
   }
@@ -552,13 +893,19 @@ async function submitBooking() {
 
   if (!date) {
 
-    alert("請選擇日期");
+    alert(
+      "請選擇日期"
+    );
+
     return;
 
   }
 
 
-  if (!startTime || !endTime) {
+  if (
+    !startTime ||
+    !endTime
+  ) {
 
     alert(
       "請設定開始與結束時間"
@@ -569,7 +916,10 @@ async function submitBooking() {
   }
 
 
-  if (startTime >= endTime) {
+  if (
+    startTime >=
+    endTime
+  ) {
 
     alert(
       "結束時間必須晚於開始時間"
@@ -580,23 +930,21 @@ async function submitBooking() {
   }
 
 
-  /* =========================
-     申請資料
-     ========================= */
-
   const data = {
 
     identity,
 
     className:
-      identity === "student"
+      identity ===
+      "student"
         ? className
         : "",
 
     applicantName,
 
     studentId:
-      identity === "student"
+      identity ===
+      "student"
         ? studentId
         : "",
 
@@ -619,7 +967,8 @@ async function submitBooking() {
       await fetch(
         "/api/temporary-bookings",
         {
-          method: "POST",
+          method:
+            "POST",
 
           headers: {
             "Content-Type":
@@ -627,7 +976,9 @@ async function submitBooking() {
           },
 
           body:
-            JSON.stringify(data)
+            JSON.stringify(
+              data
+            )
         }
       );
 
@@ -652,10 +1003,6 @@ async function submitBooking() {
       "臨時借用申請已送出！"
     );
 
-
-    /* =========================
-       清除表單
-       ========================= */
 
     document.getElementById(
       "identity"
@@ -715,9 +1062,9 @@ async function submitBooking() {
 }
 
 
-/* =========================================================
-   核准申請
-   ========================================================= */
+// =========================================================
+// 核准申請
+// =========================================================
 
 async function approveBooking(id) {
 
@@ -731,14 +1078,19 @@ async function approveBooking(id) {
 
   if (!booking) {
 
-    alert("找不到這筆申請");
+    alert(
+      "找不到這筆申請"
+    );
+
     return;
 
   }
 
 
   const classroomNumber =
-    Number(booking.classroomId);
+    Number(
+      booking.classroomId
+    );
 
 
   const ok =
@@ -754,7 +1106,9 @@ async function approveBooking(id) {
 
 
   if (!ok) {
+
     return;
+
   }
 
 
@@ -764,7 +1118,8 @@ async function approveBooking(id) {
       await fetch(
         `/api/temporary-bookings/${id}/approve`,
         {
-          method: "POST"
+          method:
+            "POST"
         }
       );
 
@@ -792,6 +1147,7 @@ async function approveBooking(id) {
 
 
     await loadBookings();
+
     await loadSlots();
 
   } catch (error) {
@@ -811,9 +1167,9 @@ async function approveBooking(id) {
 }
 
 
-/* =========================================================
-   駁回申請
-   ========================================================= */
+// =========================================================
+// 駁回申請
+// =========================================================
 
 async function rejectBooking(id) {
 
@@ -824,7 +1180,9 @@ async function rejectBooking(id) {
 
 
   if (!ok) {
+
     return;
+
   }
 
 
@@ -834,7 +1192,8 @@ async function rejectBooking(id) {
       await fetch(
         `/api/temporary-bookings/${id}/reject`,
         {
-          method: "POST"
+          method:
+            "POST"
         }
       );
 
@@ -880,13 +1239,9 @@ async function rejectBooking(id) {
 }
 
 
-/* =========================================================
-   模擬實際借出
-   =========================================================
-   ★ 測試用途
-   ★ 模擬 ESP32 / 機械手臂實際拿出鑰匙
-   ★ 正式接上 ESP32 後可移除
-   ========================================================= */
+// =========================================================
+// 模擬實際借出
+// =========================================================
 
 async function simulateBorrowed(id) {
 
@@ -928,7 +1283,9 @@ async function simulateBorrowed(id) {
 
 
   if (!ok) {
+
     return;
+
   }
 
 
@@ -938,7 +1295,8 @@ async function simulateBorrowed(id) {
       await fetch(
         `/api/temporary-bookings/${id}/borrowed`,
         {
-          method: "POST"
+          method:
+            "POST"
         }
       );
 
@@ -965,6 +1323,7 @@ async function simulateBorrowed(id) {
 
 
     await loadBookings();
+
     await loadSlots();
 
   } catch (error) {
@@ -984,13 +1343,9 @@ async function simulateBorrowed(id) {
 }
 
 
-/* =========================================================
-   測試逾期
-   =========================================================
-   ★ 測試用途
-   ★ 模擬系統發現借用時間已經超過
-   ★ 將「已借出」改成「已逾期歸還」
-   ========================================================= */
+// =========================================================
+// 測試逾期
+// =========================================================
 
 async function testOverdue(id) {
 
@@ -1001,6 +1356,7 @@ async function testOverdue(id) {
         Number(id)
     );
 
+
   if (!booking) {
 
     alert(
@@ -1010,6 +1366,7 @@ async function testOverdue(id) {
     return;
 
   }
+
 
   const ok =
     confirm(
@@ -1025,9 +1382,13 @@ async function testOverdue(id) {
       `測試後會將狀態改成「已逾期歸還」。`
     );
 
+
   if (!ok) {
+
     return;
+
   }
+
 
   try {
 
@@ -1035,12 +1396,15 @@ async function testOverdue(id) {
       await fetch(
         `/api/temporary-bookings/${id}/overdue`,
         {
-          method: "POST"
+          method:
+            "POST"
         }
       );
 
+
     const result =
       await response.json();
+
 
     if (!result.success) {
 
@@ -1053,11 +1417,14 @@ async function testOverdue(id) {
 
     }
 
+
     alert(
-      "已測試為逾期借用！"
+      "已測試為逾期借用！\n機械手臂格位也已同步。"
     );
 
+
     await loadBookings();
+
     await loadSlots();
 
   } catch (error) {
@@ -1076,9 +1443,10 @@ async function testOverdue(id) {
 
 }
 
-/* =========================================================
-   完成借還
-   ========================================================= */
+
+// =========================================================
+// 完成借還
+// =========================================================
 
 async function completeBooking(id) {
 
@@ -1089,7 +1457,9 @@ async function completeBooking(id) {
 
 
   if (!ok) {
+
     return;
+
   }
 
 
@@ -1099,7 +1469,8 @@ async function completeBooking(id) {
       await fetch(
         `/api/temporary-bookings/${id}/complete`,
         {
-          method: "POST"
+          method:
+            "POST"
         }
       );
 
@@ -1126,6 +1497,7 @@ async function completeBooking(id) {
 
 
     await loadBookings();
+
     await loadSlots();
 
   } catch (error) {
@@ -1145,16 +1517,18 @@ async function completeBooking(id) {
 }
 
 
-/* =========================================================
-   載入機械手臂格位
-   ========================================================= */
+// =========================================================
+// 載入機械手臂格位
+// =========================================================
 
 async function loadSlots() {
 
   try {
 
     const response =
-      await fetch("/api/arm/slots");
+      await fetch(
+        "/api/arm/slots"
+      );
 
 
     const result =
@@ -1198,24 +1572,38 @@ async function loadSlots() {
 }
 
 
-/* =========================================================
-   取得格位狀態文字
-   ========================================================= */
+// =========================================================
+// 取得格位狀態文字
+// =========================================================
 
 function getSlotStatusText(slot) {
 
-  switch (slot.status) {
+  switch (
+    slot.status
+  ) {
 
     case "已借出":
+
       return "🔴 已借出";
 
+
     case "已核准／待執行":
+
       return "🔵 已核准／待執行";
 
+
+    case "已逾期歸還":
+
+      return "🟠 已逾期歸還";
+
+
     case "未借出":
+
       return "🟢 未借出";
 
+
     default:
+
       return "⚪ 尚未回報";
 
   }
@@ -1223,25 +1611,32 @@ function getSlotStatusText(slot) {
 }
 
 
-/* =========================================================
-   顯示機械手臂格位
-   ========================================================= */
+// =========================================================
+// 顯示機械手臂格位
+// =========================================================
 
 function renderSlots() {
 
   const container =
-    document.getElementById("slots");
+    document.getElementById(
+      "slots"
+    );
 
 
   if (!container) {
+
     return;
+
   }
 
 
-  container.innerHTML = "";
+  container.innerHTML =
+    "";
 
 
-  if (slots.length === 0) {
+  if (
+    slots.length === 0
+  ) {
 
     container.innerHTML = `
       <p>
@@ -1254,99 +1649,137 @@ function renderSlots() {
   }
 
 
-  slots.forEach(slot => {
+  slots.forEach(
+    slot => {
 
-    const div =
-      document.createElement("div");
+      const div =
+        document.createElement(
+          "div"
+        );
 
 
-    div.className = "slot";
+      div.className =
+        "slot";
 
 
-    /* =========================
-       判斷畫面狀態
-       ========================= */
+      // ==================================================
+      // ★ 判斷畫面狀態
+      // ==================================================
 
-    if (slot.status === "已借出") {
+      if (
+        slot.status ===
+        "已借出"
+      ) {
 
-      div.classList.add("occupied");
+        div.classList.add(
+          "occupied"
+        );
 
-    } else if (
-      slot.status ===
-      "已核准／待執行"
-    ) {
+      } else if (
+        slot.status ===
+        "已逾期歸還"
+      ) {
 
-      div.classList.add("pending");
+        // ★ 逾期仍然是占用狀態
+        div.classList.add(
+          "occupied"
+        );
 
-    } else {
+      } else if (
+        slot.status ===
+        "已核准／待執行"
+      ) {
 
-      div.classList.add("empty");
+        div.classList.add(
+          "pending"
+        );
+
+      } else {
+
+        div.classList.add(
+          "empty"
+        );
+
+      }
+
+
+      div.innerHTML = `
+
+        <div class="slot-title">
+          🤖 第
+          ${escapeHTML(
+            String(
+              slot.slotId
+            )
+          )}
+          格
+        </div>
+
+        <div>
+          狀態：
+          <strong>
+            ${escapeHTML(
+              getSlotStatusText(
+                slot
+              )
+            )}
+          </strong>
+        </div>
+
+        <div>
+          教室：
+          ${escapeHTML(
+            slot.roomName ||
+            "-"
+          )}
+        </div>
+
+        <div>
+          使用者：
+          ${escapeHTML(
+            slot.borrower ||
+            "-"
+          )}
+        </div>
+
+        <div>
+          借用時間：
+          ${escapeHTML(
+            slot.borrowTime ||
+            "-"
+          )}
+        </div>
+
+      `;
+
+
+      container.appendChild(
+        div
+      );
 
     }
-
-
-    div.innerHTML = `
-
-      <div class="slot-title">
-        🤖 第
-        ${escapeHTML(
-          String(slot.slotId)
-        )}
-        格
-      </div>
-
-      <div>
-        狀態：
-        <strong>
-          ${escapeHTML(
-            getSlotStatusText(slot)
-          )}
-        </strong>
-      </div>
-
-      <div>
-        教室：
-        ${escapeHTML(
-          slot.roomName || "-"
-        )}
-      </div>
-
-      <div>
-        使用者：
-        ${escapeHTML(
-          slot.borrower || "-"
-        )}
-      </div>
-
-      <div>
-        借用時間：
-        ${escapeHTML(
-          slot.borrowTime || "-"
-        )}
-      </div>
-
-    `;
-
-
-    container.appendChild(div);
-
-  });
+  );
 
 }
 
 
-/* =========================================================
-   登出
-   ========================================================= */
+// =========================================================
+// 登出
+// =========================================================
 
 async function logout() {
+
+  // 停止即時檢測
+  stopRealtimeCheck();
+
 
   try {
 
     await fetch(
       "/api/logout",
       {
-        method: "POST"
+        method:
+          "POST"
       }
     );
 
@@ -1366,9 +1799,9 @@ async function logout() {
 }
 
 
-/* =========================================================
-   防止 HTML 注入
-   ========================================================= */
+// =========================================================
+// 防止 HTML 注入
+// =========================================================
 
 function escapeHTML(value) {
 
