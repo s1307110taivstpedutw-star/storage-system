@@ -1,4 +1,4 @@
-```javascript
+
 let currentUser = null;
 let bookings = [];
 let slots = [];
@@ -1485,4 +1485,4 @@ function escapeHTML(value) {
     );
 
 }
-```
+
