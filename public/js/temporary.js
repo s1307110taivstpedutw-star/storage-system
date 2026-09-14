@@ -340,26 +340,40 @@ function renderBookings() {
 
     /* 已借出／逾期 */
 
-    else if (
-      currentUser &&
-      currentUser.role === "admin" &&
-      (
-        booking.status === "borrowed" ||
-        booking.status === "已借出" ||
-        booking.status === "已逾期歸還"
-      )
-    ) {
+else if (
+  currentUser &&
+  currentUser.role === "admin" &&
+  (
+    booking.status === "borrowed" ||
+    booking.status === "已借出" ||
+    booking.status === "已逾期歸還"
+  )
+) {
 
-      actionHTML = `
-        <button
-          class="btn-success"
-          onclick="completeBooking(${booking.id})"
-        >
-          完成借還
-        </button>
-      `;
+  actionHTML = `
+    <button
+      class="btn-success"
+      onclick="completeBooking(${booking.id})"
+    >
+      完成借還
+    </button>
 
+    ${
+      booking.status === "borrowed" ||
+      booking.status === "已借出"
+        ? `
+          <button
+            class="btn-primary"
+            onclick="testOverdue(${booking.id})"
+          >
+            🕐 測試逾期
+          </button>
+        `
+        : ""
     }
+  `;
+
+}
 
 
     /* =========================
