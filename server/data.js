@@ -44,10 +44,27 @@ function createDefaultData() {
   }
 
 
+  // 帳號資料
+  const accounts = {
+    admin: {
+      password: "admin123",
+      role: "admin",
+      name: "系統管理員"
+    },
+
+    teacher: {
+      password: "teacher123",
+      role: "teacher",
+      name: "教師"
+    }
+  };
+
+
   return {
     armSlots,
     classrooms,
-    temporaryBookings: []
+    temporaryBookings: [],
+    accounts
   };
 }
 
@@ -193,6 +210,62 @@ function normalizeData(data) {
   if (!Array.isArray(data.temporaryBookings)) {
     data.temporaryBookings = [];
   }
+
+
+  // ------------------------------
+  // 帳號
+  // ------------------------------
+
+  if (
+    !data.accounts ||
+    typeof data.accounts !== "object" ||
+    Array.isArray(data.accounts)
+  ) {
+    data.accounts = {};
+  }
+
+
+  // 如果舊資料沒有 admin 帳號，就補回來
+  if (!data.accounts.admin) {
+    data.accounts.admin = {
+      password: "admin123",
+      role: "admin",
+      name: "系統管理員"
+    };
+  }
+
+
+  // 如果舊資料沒有 teacher 帳號，就補回來
+  if (!data.accounts.teacher) {
+    data.accounts.teacher = {
+      password: "teacher123",
+      role: "teacher",
+      name: "教師"
+    };
+  }
+
+
+  // 整理帳號格式
+  Object.keys(data.accounts).forEach((username) => {
+    const account = data.accounts[username];
+
+    if (!account || typeof account !== "object") {
+      delete data.accounts[username];
+      return;
+    }
+
+    if (account.password === undefined) {
+      account.password = "";
+    }
+
+    if (account.role !== "admin" && account.role !== "teacher") {
+      account.role = "teacher";
+    }
+
+    if (account.name === undefined) {
+      account.name = username;
+    }
+  });
 
 
   return data;
