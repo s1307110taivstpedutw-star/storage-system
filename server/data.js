@@ -146,11 +146,14 @@ function normalizeData(data) {
     }
 
 
+    // ★ 已加入「已逾期歸還」
     const validStatuses = [
       "未借出",
       "已核准／待執行",
-      "已借出"
+      "已借出",
+      "已逾期歸還"
     ];
+
 
     if (!validStatuses.includes(slot.status)) {
       slot.status = "未借出";
@@ -225,7 +228,6 @@ function normalizeData(data) {
   }
 
 
-  // 如果舊資料沒有 admin 帳號，就補回來
   if (!data.accounts.admin) {
     data.accounts.admin = {
       password: "admin123",
@@ -235,7 +237,6 @@ function normalizeData(data) {
   }
 
 
-  // 如果舊資料沒有 teacher 帳號，就補回來
   if (!data.accounts.teacher) {
     data.accounts.teacher = {
       password: "teacher123",
@@ -245,7 +246,6 @@ function normalizeData(data) {
   }
 
 
-  // 整理帳號格式
   Object.keys(data.accounts).forEach((username) => {
     const account = data.accounts[username];
 
@@ -258,7 +258,10 @@ function normalizeData(data) {
       account.password = "";
     }
 
-    if (account.role !== "admin" && account.role !== "teacher") {
+    if (
+      account.role !== "admin" &&
+      account.role !== "teacher"
+    ) {
       account.role = "teacher";
     }
 
@@ -287,7 +290,11 @@ function loadData() {
     }
 
 
-    const raw = fs.readFileSync(DATA_FILE, "utf8");
+    const raw = fs.readFileSync(
+      DATA_FILE,
+      "utf8"
+    );
+
 
     if (!raw.trim()) {
       const data = createDefaultData();
@@ -300,16 +307,22 @@ function loadData() {
 
     const data = JSON.parse(raw);
 
-    const normalizedData = normalizeData(data);
+    const normalizedData =
+      normalizeData(data);
 
     saveData(normalizedData);
 
     return normalizedData;
 
   } catch (error) {
-    console.error("讀取 data.json 失敗：", error);
 
-    const data = createDefaultData();
+    console.error(
+      "讀取 data.json 失敗：",
+      error
+    );
+
+    const data =
+      createDefaultData();
 
     saveData(data);
 
@@ -324,13 +337,24 @@ function loadData() {
 
 function saveData(data) {
   try {
+
     fs.writeFileSync(
       DATA_FILE,
-      JSON.stringify(data, null, 2),
+      JSON.stringify(
+        data,
+        null,
+        2
+      ),
       "utf8"
     );
+
   } catch (error) {
-    console.error("儲存 data.json 失敗：", error);
+
+    console.error(
+      "儲存 data.json 失敗：",
+      error
+    );
+
   }
 }
 
