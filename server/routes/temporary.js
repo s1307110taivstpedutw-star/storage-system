@@ -1115,16 +1115,10 @@ router.post(
         booking.slotId !== undefined
       ) {
 
-        const slot =
-          data.armSlots.find(
-            item =>
-              Number(
-                item.slotId
-              ) ===
-              Number(
-                booking.slotId
-              )
-          );
+const slot =
+  data.armSlots[
+    Number(booking.slotId)
+  ] || null;
 
 
         if (slot) {
