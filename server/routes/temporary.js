@@ -8,14 +8,6 @@ const { requireLogin, requireAdmin } = require("./auth");
 
 // ==================================================
 // 工具：依教室編號取得機械手臂格位
-//
-// 教室 1 → 第 1 格
-// 教室 2 → 第 2 格
-// ...
-// 教室 8 → 第 8 格
-//
-// 申請時不分配格位。
-// 管理員核准時才真正鎖定格位。
 // ==================================================
 
 function getSlotByClassroom(data, classroomId) {
@@ -26,7 +18,6 @@ function getSlotByClassroom(data, classroomId) {
     slot =>
       Number(slot.slotId) === id
   );
-
 }
 
 
@@ -46,7 +37,6 @@ function isClosedBooking(booking) {
     booking.status === "completed" ||
     booking.status === "已完成"
   );
-
 }
 
 
@@ -58,23 +48,17 @@ function getStatusText(status) {
 
   const statusMap = {
 
-    pending:
-      "待審核",
+    pending: "待審核",
 
-    approved:
-      "已核准／待執行",
+    approved: "已核准／待執行",
 
-    borrowed:
-      "已借出",
+    borrowed: "已借出",
 
-    completed:
-      "已完成",
+    completed: "已完成",
 
-    rejected:
-      "已駁回",
+    rejected: "已駁回",
 
-    "申請中":
-      "待審核",
+    "申請中": "待審核",
 
     "已核准／待執行":
       "已核准／待執行",
@@ -98,17 +82,11 @@ function getStatusText(status) {
     status ||
     "未知"
   );
-
 }
 
 
 // ==================================================
 // GET /api/temporary-bookings
-//
-// 取得臨時借用申請
-//
-// 管理員：全部
-// 一般使用者：自己的
 // ==================================================
 
 router.get(
@@ -118,16 +96,13 @@ router.get(
 
     try {
 
-      const data = loadData();
+      const data =
+        loadData();
 
       let bookings = [
         ...data.temporaryBookings
       ];
 
-
-      // ----------------------------------------------
-      // 非管理員只能查看自己的申請
-      // ----------------------------------------------
 
       if (
         req.session.user.role !==
@@ -146,10 +121,6 @@ router.get(
       }
 
 
-      // ----------------------------------------------
-      // 補上 statusText
-      // ----------------------------------------------
-
       bookings =
         bookings.map(
           booking => ({
@@ -160,14 +131,9 @@ router.get(
               getStatusText(
                 booking.status
               )
-
           })
         );
 
-
-      // ----------------------------------------------
-      // 最新申請排前面
-      // ----------------------------------------------
 
       bookings.sort(
         (a, b) => {
@@ -191,7 +157,6 @@ router.get(
             0;
 
           return timeB - timeA;
-
         }
       );
 
@@ -201,7 +166,6 @@ router.get(
         bookings
       });
 
-
     } catch (error) {
 
       console.error(
@@ -210,24 +174,17 @@ router.get(
       );
 
       res.status(500).json({
-
         success: false,
-
         message:
           "無法取得臨時借用資料"
-
       });
-
     }
-
   }
 );
 
 
 // ==================================================
 // POST /api/temporary-bookings
-//
-// 新增臨時教室借用申請
 // ==================================================
 
 router.post(
@@ -250,101 +207,60 @@ router.post(
       } = req.body;
 
 
-      // ==================================================
-      // 身分檢查
-      // ==================================================
-
       if (
         identity !== "teacher" &&
         identity !== "student"
       ) {
 
         return res.status(400).json({
-
           success: false,
-
           message:
             "請選擇正確的申請身分"
-
         });
-
       }
 
-
-      // ==================================================
-      // 姓名
-      // ==================================================
 
       if (
         !applicantName ||
-        !String(
-          applicantName
-        ).trim()
+        !String(applicantName).trim()
       ) {
 
         return res.status(400).json({
-
           success: false,
-
           message:
             "請輸入姓名"
-
         });
-
       }
 
 
-      // ==================================================
-      // 學生資料
-      // ==================================================
-
-      if (
-        identity === "student"
-      ) {
+      if (identity === "student") {
 
         if (
           !className ||
-          !String(
-            className
-          ).trim()
+          !String(className).trim()
         ) {
 
           return res.status(400).json({
-
             success: false,
-
             message:
               "學生申請時必須填寫班級"
-
           });
-
         }
 
 
         if (
           !studentId ||
-          !String(
-            studentId
-          ).trim()
+          !String(studentId).trim()
         ) {
 
           return res.status(400).json({
-
             success: false,
-
             message:
               "學生申請時必須填寫學號"
-
           });
-
         }
-
       }
 
-
-      // ==================================================
-      // 教室
-      // ==================================================
 
       const roomId =
         Number(classroomId);
@@ -357,14 +273,10 @@ router.post(
       ) {
 
         return res.status(400).json({
-
           success: false,
-
           message:
             "教室必須選擇 1～8"
-
         });
-
       }
 
 
@@ -379,20 +291,12 @@ router.post(
       if (!classroom) {
 
         return res.status(400).json({
-
           success: false,
-
           message:
             "找不到指定教室"
-
         });
-
       }
 
-
-      // ==================================================
-      // 日期
-      // ==================================================
 
       if (
         !date ||
@@ -400,20 +304,12 @@ router.post(
       ) {
 
         return res.status(400).json({
-
           success: false,
-
           message:
             "請選擇借用日期"
-
         });
-
       }
 
-
-      // ==================================================
-      // 時間
-      // ==================================================
 
       if (
         !startTime ||
@@ -421,20 +317,15 @@ router.post(
       ) {
 
         return res.status(400).json({
-
           success: false,
-
           message:
             "請選擇開始與結束時間"
-
         });
-
       }
 
 
       const normalizedStartTime =
         String(startTime).trim();
-
 
       const normalizedEndTime =
         String(endTime).trim();
@@ -446,20 +337,12 @@ router.post(
       ) {
 
         return res.status(400).json({
-
           success: false,
-
           message:
             "結束時間必須晚於開始時間"
-
         });
-
       }
 
-
-      // ==================================================
-      // 檢查同一教室時間衝突
-      // ==================================================
 
       const conflict =
         data.temporaryBookings.some(
@@ -470,9 +353,7 @@ router.post(
                 booking.classroomId
               ) !== roomId
             ) {
-
               return false;
-
             }
 
 
@@ -480,9 +361,7 @@ router.post(
               booking.date !==
               String(date).trim()
             ) {
-
               return false;
-
             }
 
 
@@ -491,24 +370,15 @@ router.post(
                 booking
               )
             ) {
-
               return false;
-
             }
 
-
-            // ------------------------------------------
-            // 已逾期但尚未完成歸還
-            // 仍然視為占用
-            // ------------------------------------------
 
             if (
               booking.status ===
               "已逾期歸還"
             ) {
-
               return true;
-
             }
 
 
@@ -516,7 +386,6 @@ router.post(
               String(
                 booking.startTime || ""
               );
-
 
             const existingEnd =
               String(
@@ -528,9 +397,7 @@ router.post(
               !existingStart ||
               !existingEnd
             ) {
-
               return false;
-
             }
 
 
@@ -540,7 +407,6 @@ router.post(
               normalizedEndTime >
                 existingStart
             );
-
           }
         );
 
@@ -548,20 +414,12 @@ router.post(
       if (conflict) {
 
         return res.status(409).json({
-
           success: false,
-
           message:
             "此教室在指定日期與時間已有臨時借用申請"
-
         });
-
       }
 
-
-      // ==================================================
-      // 建立申請
-      // ==================================================
 
       const now =
         new Date();
@@ -572,17 +430,7 @@ router.post(
         id:
           Date.now(),
 
-
-        // ----------------------------------------------
-        // 申請身分
-        // ----------------------------------------------
-
         identity,
-
-
-        // ----------------------------------------------
-        // 學生資料
-        // ----------------------------------------------
 
         className:
           identity === "student"
@@ -591,7 +439,6 @@ router.post(
               ).trim()
             : "",
 
-
         studentId:
           identity === "student"
             ? String(
@@ -599,66 +446,37 @@ router.post(
               ).trim()
             : "",
 
-
-        // ----------------------------------------------
-        // 申請人
-        // ----------------------------------------------
-
         applicantName:
           String(
             applicantName
           ).trim(),
 
-
         applicant:
           req.session.user.username,
-
 
         applicantRole:
           req.session.user.role,
 
-
         username:
           req.session.user.username,
-
-
-        // ----------------------------------------------
-        // 教室
-        // ----------------------------------------------
 
         classroomId:
           roomId,
 
-
         classroomName:
           classroom.name,
-
 
         classroom:
           classroom.name,
 
-
-        // ----------------------------------------------
-        // 日期與時間
-        // ----------------------------------------------
-
         date:
-          String(
-            date
-          ).trim(),
-
+          String(date).trim(),
 
         startTime:
           normalizedStartTime,
 
-
         endTime:
           normalizedEndTime,
-
-
-        // ----------------------------------------------
-        // 原因
-        // ----------------------------------------------
 
         reason:
           reason !== undefined
@@ -667,66 +485,41 @@ router.post(
               ).trim()
             : "",
 
-
-        // ----------------------------------------------
-        // 狀態
-        // ----------------------------------------------
-
         status:
           "pending",
-
 
         statusText:
           "待審核",
 
-
-        // ----------------------------------------------
-        // 申請時不分配格位
-        // ----------------------------------------------
-
         slotId:
           null,
-
-
-        // ----------------------------------------------
-        // 時間紀錄
-        // ----------------------------------------------
 
         createdAt:
           now.toISOString(),
 
-
         createdAtTimestamp:
           now.getTime(),
-
 
         approvedAt:
           null,
 
-
         borrowedAt:
           null,
-
 
         returnedAt:
           null,
 
-
         overdueAt:
           null,
-
 
         completedAt:
           null,
 
-
         rejectedAt:
           null,
 
-
         manualCompleted:
           false
-
       };
 
 
@@ -745,16 +538,11 @@ router.post(
 
 
       res.json({
-
         success: true,
-
         message:
           "臨時借用申請已送出",
-
         booking
-
       });
-
 
     } catch (error) {
 
@@ -764,31 +552,17 @@ router.post(
       );
 
       res.status(500).json({
-
         success: false,
-
         message:
           "新增臨時借用失敗"
-
       });
-
     }
-
   }
 );
 
 
 // ==================================================
 // POST /api/temporary-bookings/:id/approve
-//
-// 管理員核准
-//
-// 教室 1 → 第 1 格
-// 教室 2 → 第 2 格
-// ...
-// 教室 8 → 第 8 格
-//
-// 核准 ≠ 已借出
 // ==================================================
 
 router.post(
@@ -802,7 +576,6 @@ router.post(
         Number(
           req.params.id
         );
-
 
       const data =
         loadData();
@@ -819,14 +592,10 @@ router.post(
       if (!booking) {
 
         return res.status(404).json({
-
           success: false,
-
           message:
             "找不到這筆借用申請"
-
         });
-
       }
 
 
@@ -836,14 +605,10 @@ router.post(
       ) {
 
         return res.status(400).json({
-
           success: false,
-
           message:
             "這筆申請目前無法核准"
-
         });
-
       }
 
 
@@ -862,14 +627,10 @@ router.post(
       ) {
 
         return res.status(400).json({
-
           success: false,
-
           message:
             "此申請的教室編號無法對應機械手臂格位"
-
         });
-
       }
 
 
@@ -883,20 +644,12 @@ router.post(
       if (!slot) {
 
         return res.status(404).json({
-
           success: false,
-
           message:
             "找不到對應的機械手臂格位"
-
         });
-
       }
 
-
-      // ==================================================
-      // 檢查格位
-      // ==================================================
 
       const slotAvailable =
         slot.status === "未借出" ||
@@ -909,56 +662,38 @@ router.post(
       if (!slotAvailable) {
 
         return res.status(409).json({
-
           success: false,
-
           message:
             `機械手臂第 ${slot.slotId} 格目前無法使用`
-
         });
-
       }
 
-
-      // ==================================================
-      // 更新申請
-      // ==================================================
 
       booking.status =
         "approved";
 
-
       booking.statusText =
         "已核准／待執行";
-
 
       booking.slotId =
         Number(
           slot.slotId
         );
 
-
       booking.approvedAt =
         new Date().toISOString();
 
 
-      // ==================================================
-      // 更新機械手臂格位
-      // ==================================================
-
       slot.status =
         "已核准／待執行";
 
-
       slot.bookingId =
         booking.id;
-
 
       slot.borrower =
         booking.applicantName ||
         booking.borrower ||
         "";
-
 
       slot.borrowTime =
         booking.date +
@@ -966,7 +701,6 @@ router.post(
         booking.startTime +
         "~" +
         booking.endTime;
-
 
       slot.roomName =
         booking.classroomName ||
@@ -980,26 +714,19 @@ router.post(
       console.log(
         `申請 ${bookingId} 已核准，` +
         `教室 ${classroomId} → ` +
-        `機械手臂第 ${slot.slotId} 格，` +
-        `等待 ESP32 實際執行`
+        `機械手臂第 ${slot.slotId} 格`
       );
 
 
       res.json({
-
         success: true,
-
         message:
           `申請已核准，教室 ${classroomId} ` +
           `已自動對應機械手臂第 ${slot.slotId} 格，` +
           `等待 ESP32 執行`,
-
         booking,
-
         slot
-
       });
-
 
     } catch (error) {
 
@@ -1009,24 +736,17 @@ router.post(
       );
 
       res.status(500).json({
-
         success: false,
-
         message:
           "核准失敗"
-
       });
-
     }
-
   }
 );
 
 
 // ==================================================
 // POST /api/temporary-bookings/:id/reject
-//
-// 管理員駁回
 // ==================================================
 
 router.post(
@@ -1041,7 +761,6 @@ router.post(
           req.params.id
         );
 
-
       const data =
         loadData();
 
@@ -1057,14 +776,10 @@ router.post(
       if (!booking) {
 
         return res.status(404).json({
-
           success: false,
-
           message:
             "找不到這筆借用申請"
-
         });
-
       }
 
 
@@ -1074,24 +789,18 @@ router.post(
       ) {
 
         return res.status(400).json({
-
           success: false,
-
           message:
             "這筆申請目前無法駁回"
-
         });
-
       }
 
 
       booking.status =
         "rejected";
 
-
       booking.statusText =
         "已駁回";
-
 
       booking.rejectedAt =
         new Date().toISOString();
@@ -1101,16 +810,11 @@ router.post(
 
 
       res.json({
-
         success: true,
-
         message:
           "申請已駁回",
-
         booking
-
       });
-
 
     } catch (error) {
 
@@ -1120,29 +824,17 @@ router.post(
       );
 
       res.status(500).json({
-
         success: false,
-
         message:
           "駁回失敗"
-
       });
-
     }
-
   }
 );
 
 
 // ==================================================
 // POST /api/temporary-bookings/:id/complete
-//
-// 管理員人工完成
-//
-// 正常：ESP32 歸還 → /returned
-// 備援：管理員手動 → /complete
-//
-// 「已逾期歸還」也可以在這裡完成。
 // ==================================================
 
 router.post(
@@ -1157,7 +849,6 @@ router.post(
           req.params.id
         );
 
-
       const data =
         loadData();
 
@@ -1173,14 +864,10 @@ router.post(
       if (!booking) {
 
         return res.status(404).json({
-
           success: false,
-
           message:
             "找不到這筆借用紀錄"
-
         });
-
       }
 
 
@@ -1193,45 +880,30 @@ router.post(
       ) {
 
         return res.status(400).json({
-
           success: false,
-
           message:
             "目前狀態無法完成借還"
-
         });
-
       }
 
-
-      // ==================================================
-      // 完成
-      // ==================================================
 
       booking.status =
         "completed";
 
-
       booking.statusText =
         "已完成";
-
 
       booking.completedAt =
         new Date().toISOString();
 
-
       booking.returnedAt =
         new Date().toISOString();
-
 
       booking.manualCompleted =
         true;
 
 
-      // ==================================================
-      // 釋放格位
-      // ==================================================
-
+      // ★ 完成才釋放格位
       if (
         booking.slotId !== null &&
         booking.slotId !== undefined
@@ -1240,12 +912,8 @@ router.post(
         const slot =
           data.armSlots.find(
             item =>
-              Number(
-                item.slotId
-              ) ===
-              Number(
-                booking.slotId
-              )
+              Number(item.slotId) ===
+              Number(booking.slotId)
           );
 
 
@@ -1254,20 +922,15 @@ router.post(
           slot.status =
             "未借出";
 
-
           slot.borrower =
             "";
-
 
           slot.borrowTime =
             "";
 
-
           slot.bookingId =
             null;
-
         }
-
       }
 
 
@@ -1275,16 +938,11 @@ router.post(
 
 
       res.json({
-
         success: true,
-
         message:
           "借還流程已完成，機械手臂格位已釋放",
-
         booking
-
       });
-
 
     } catch (error) {
 
@@ -1294,28 +952,17 @@ router.post(
       );
 
       res.status(500).json({
-
         success: false,
-
         message:
           "完成借還失敗"
-
       });
-
     }
-
   }
 );
 
 
 // ==================================================
 // POST /api/temporary-bookings/:id/borrowed
-//
-// ESP32 / 機械手臂回報
-//
-// 已核准／待執行
-//       ↓
-// 已借出
 // ==================================================
 
 router.post(
@@ -1330,7 +977,6 @@ router.post(
           req.params.id
         );
 
-
       const data =
         loadData();
 
@@ -1346,33 +992,23 @@ router.post(
       if (!booking) {
 
         return res.status(404).json({
-
           success: false,
-
           message:
             "找不到這筆借用紀錄"
-
         });
-
       }
 
 
       if (
-        booking.status !==
-          "approved" &&
-        booking.status !==
-          "已核准／待執行"
+        booking.status !== "approved" &&
+        booking.status !== "已核准／待執行"
       ) {
 
         return res.status(400).json({
-
           success: false,
-
           message:
             "這筆借用目前不是等待執行狀態"
-
         });
-
       }
 
 
@@ -1386,47 +1022,31 @@ router.post(
       if (!slot) {
 
         return res.status(400).json({
-
           success: false,
-
           message:
             "找不到對應的機械手臂格位"
-
         });
-
       }
 
 
       if (
-        Number(
-          slot.bookingId
-        ) !==
+        Number(slot.bookingId) !==
         bookingId
       ) {
 
         return res.status(409).json({
-
           success: false,
-
           message:
             "機械手臂格位與借用申請不一致"
-
         });
-
       }
 
-
-      // ==================================================
-      // 實際借出
-      // ==================================================
 
       booking.status =
         "borrowed";
 
-
       booking.statusText =
         "已借出";
-
 
       booking.borrowedAt =
         new Date().toISOString();
@@ -1440,24 +1060,17 @@ router.post(
 
 
       console.log(
-        `ESP32 回報：申請 ${bookingId} ` +
-        `已實際借出，第 ${slot.slotId} 格`
+        `ESP32 回報：申請 ${bookingId} 已實際借出，第 ${slot.slotId} 格`
       );
 
 
       res.json({
-
         success: true,
-
         message:
           "已記錄實際借出",
-
         booking,
-
         slot
-
       });
-
 
     } catch (error) {
 
@@ -1467,32 +1080,17 @@ router.post(
       );
 
       res.status(500).json({
-
         success: false,
-
         message:
           "記錄借出失敗"
-
       });
-
     }
-
   }
 );
 
 
 // ==================================================
 // POST /api/temporary-bookings/:id/returned
-//
-// ESP32 / 機械手臂回報實際歸還
-//
-// 已借出
-//      ↓
-// 已完成
-//
-// 已逾期歸還
-//      ↓
-// 已完成
 // ==================================================
 
 router.post(
@@ -1507,7 +1105,6 @@ router.post(
           req.params.id
         );
 
-
       const data =
         loadData();
 
@@ -1523,14 +1120,10 @@ router.post(
       if (!booking) {
 
         return res.status(404).json({
-
           success: false,
-
           message:
             "找不到這筆借用紀錄"
-
         });
-
       }
 
 
@@ -1541,14 +1134,10 @@ router.post(
       ) {
 
         return res.status(400).json({
-
           success: false,
-
           message:
             "這筆借用目前不是借出狀態"
-
         });
-
       }
 
 
@@ -1559,51 +1148,36 @@ router.post(
         );
 
 
-      // ==================================================
-      // 實際歸還
-      // ==================================================
-
       booking.status =
         "completed";
-
 
       booking.statusText =
         "已完成";
 
-
       booking.returnedAt =
         new Date().toISOString();
 
-
       booking.completedAt =
         new Date().toISOString();
-
 
       booking.manualCompleted =
         false;
 
 
-      // ==================================================
-      // 釋放格位
-      // ==================================================
-
+      // ★ 實際歸還才釋放
       if (slot) {
 
         slot.status =
           "未借出";
 
-
         slot.borrower =
           "";
-
 
         slot.borrowTime =
           "";
 
-
         slot.bookingId =
           null;
-
       }
 
 
@@ -1616,19 +1190,13 @@ router.post(
 
 
       res.json({
-
         success: true,
-
         message:
           "歸還完成",
-
         booking,
-
         slot:
           slot || null
-
       });
-
 
     } catch (error) {
 
@@ -1638,16 +1206,11 @@ router.post(
       );
 
       res.status(500).json({
-
         success: false,
-
         message:
           "記錄歸還失敗"
-
       });
-
     }
-
   }
 );
 
@@ -1661,9 +1224,8 @@ router.post(
 //    ↓
 // 已逾期歸還
 //
-// ★ 不釋放機械手臂格位
-//
-// ★ 正式自動化使用 /check-overdue
+// ★ 同步機械手臂格位
+// ★ 不釋放格位
 // ==================================================
 
 router.post(
@@ -1678,7 +1240,6 @@ router.post(
           req.params.id
         );
 
-
       const data =
         loadData();
 
@@ -1694,14 +1255,10 @@ router.post(
       if (!booking) {
 
         return res.status(404).json({
-
           success: false,
-
           message:
             "找不到這筆借用紀錄"
-
         });
-
       }
 
 
@@ -1711,34 +1268,59 @@ router.post(
       ) {
 
         return res.status(400).json({
-
           success: false,
-
           message:
             "目前狀態不是已借出"
-
         });
-
       }
 
 
       booking.status =
         "已逾期歸還";
 
-
       booking.statusText =
         "已逾期歸還";
-
 
       booking.overdueAt =
         new Date().toISOString();
 
 
       // ==================================================
-      // 注意：
-      // 逾期不等於歸還
-      // 所以這裡故意不釋放 slot
+      // ★ 關鍵修正
+      // 逾期後同步機械手臂格位
       // ==================================================
+
+      if (
+        booking.slotId !== null &&
+        booking.slotId !== undefined
+      ) {
+
+        const slot =
+          data.armSlots.find(
+            item =>
+              Number(item.slotId) ===
+              Number(booking.slotId)
+          );
+
+
+        if (slot) {
+
+          slot.status =
+            "已逾期歸還";
+
+
+          // ★ 故意保留
+          // borrower
+          // borrowTime
+          // bookingId
+
+          console.log(
+            `機械手臂第 ${slot.slotId} 格 ` +
+            `已同步為「已逾期歸還」`
+          );
+        }
+      }
+
 
       saveData(data);
 
@@ -1749,16 +1331,11 @@ router.post(
 
 
       res.json({
-
         success: true,
-
         message:
-          "已標記為逾期歸還",
-
+          "已標記為逾期歸還，機械手臂格位也已同步",
         booking
-
       });
-
 
     } catch (error) {
 
@@ -1768,27 +1345,17 @@ router.post(
       );
 
       res.status(500).json({
-
         success: false,
-
         message:
           "標記逾期失敗"
-
       });
-
     }
-
   }
 );
 
 
 // ==================================================
 // GET /api/temporary-bookings/:id
-//
-// 查詢單一申請
-//
-// 管理員：全部
-// 一般使用者：自己的
 // ==================================================
 
 router.get(
@@ -1803,7 +1370,6 @@ router.get(
           req.params.id
         );
 
-
       const data =
         loadData();
 
@@ -1819,20 +1385,12 @@ router.get(
       if (!booking) {
 
         return res.status(404).json({
-
           success: false,
-
           message:
             "找不到此申請"
-
         });
-
       }
 
-
-      // ==================================================
-      // 權限
-      // ==================================================
 
       if (
         req.session.user.role !==
@@ -1844,23 +1402,16 @@ router.get(
       ) {
 
         return res.status(403).json({
-
           success: false,
-
           message:
             "沒有權限查看此申請"
-
         });
-
       }
 
 
       res.json({
-
         success: true,
-
         booking: {
-
           ...booking,
 
           statusText:
@@ -1868,11 +1419,8 @@ router.get(
             getStatusText(
               booking.status
             )
-
         }
-
       });
-
 
     } catch (error) {
 
@@ -1882,16 +1430,11 @@ router.get(
       );
 
       res.status(500).json({
-
         success: false,
-
         message:
           "查詢失敗"
-
       });
-
     }
-
   }
 );
 
@@ -1899,18 +1442,12 @@ router.get(
 // ==================================================
 // POST /api/temporary-bookings/check-overdue
 //
-// 檢查所有臨時借用是否逾期
+// ★ 即時逾期檢查核心
 //
-// 功能：
-// 1. 找出「已借出」且超過結束時間
-// 2. 標記為「已逾期歸還」
-// 3. 記錄 overdueAt
-//
-// ★ 不釋放機械手臂格位
-//
-// 注意：
-// 目前此 API 為管理員專用。
-// 後續 GitHub Actions 不應使用管理員帳號密碼。
+// 1. 找出已借出且超過結束時間
+// 2. 改成「已逾期歸還」
+// 3. 同步機械手臂格位
+// 4. 不釋放格位
 // ==================================================
 
 router.post(
@@ -1923,14 +1460,11 @@ router.post(
       const data =
         loadData();
 
-
       const now =
         new Date();
 
-
       let updatedCount =
         0;
-
 
       const updatedBookings =
         [];
@@ -1939,37 +1473,21 @@ router.post(
       data.temporaryBookings.forEach(
         booking => {
 
-          // ------------------------------------------
-          // 只有已借出才檢查
-          // ------------------------------------------
-
           if (
             booking.status !== "已借出" &&
             booking.status !== "borrowed"
           ) {
-
             return;
-
           }
 
-
-          // ------------------------------------------
-          // 必須有日期與結束時間
-          // ------------------------------------------
 
           if (
             !booking.date ||
             !booking.endTime
           ) {
-
             return;
-
           }
 
-
-          // ------------------------------------------
-          // 台灣時間 UTC+8
-          // ------------------------------------------
 
           const endDateTime =
             `${booking.date}T${booking.endTime}:00+08:00`;
@@ -1981,24 +1499,14 @@ router.post(
             );
 
 
-          // ------------------------------------------
-          // 時間格式錯誤
-          // ------------------------------------------
-
           if (
             Number.isNaN(
               endTime.getTime()
             )
           ) {
-
             return;
-
           }
 
-
-          // ------------------------------------------
-          // 判斷是否逾期
-          // ------------------------------------------
 
           if (
             endTime.getTime() <
@@ -2008,38 +1516,60 @@ router.post(
             booking.status =
               "已逾期歸還";
 
-
             booking.statusText =
               "已逾期歸還";
-
 
             booking.overdueAt =
               now.toISOString();
 
 
-            updatedCount++;
+            // ==================================================
+            // ★ 關鍵修正
+            // 同步機械手臂格位
+            // ==================================================
 
+            if (
+              booking.slotId !== null &&
+              booking.slotId !== undefined
+            ) {
+
+              const slot =
+                data.armSlots.find(
+                  item =>
+                    Number(item.slotId) ===
+                    Number(booking.slotId)
+                );
+
+
+              if (slot) {
+
+                slot.status =
+                  "已逾期歸還";
+
+
+                console.log(
+                  `自動逾期：機械手臂第 ` +
+                  `${slot.slotId} 格同步為「已逾期歸還」`
+                );
+              }
+            }
+
+
+            updatedCount++;
 
             updatedBookings.push(
               booking
             );
-
           }
-
         }
       );
 
-
-      // ------------------------------------------
-      // 有資料變更才儲存
-      // ------------------------------------------
 
       if (
         updatedCount > 0
       ) {
 
         saveData(data);
-
       }
 
 
@@ -2050,7 +1580,6 @@ router.post(
 
 
       res.json({
-
         success: true,
 
         checkedAt:
@@ -2060,9 +1589,7 @@ router.post(
 
         bookings:
           updatedBookings
-
       });
-
 
     } catch (error) {
 
@@ -2072,22 +1599,13 @@ router.post(
       );
 
       res.status(500).json({
-
         success: false,
-
         message:
           "檢查逾期借用失敗"
-
       });
-
     }
-
   }
 );
 
-
-// ==================================================
-// 匯出 Router
-// ==================================================
 
 module.exports = router;
