@@ -1,24 +1,7 @@
 const express = require("express");
+const { loadData } = require("../data");
 
 const router = express.Router();
-
-// ======================================================
-// 測試帳號
-// ======================================================
-
-const accounts = {
-  admin: {
-    password: "admin123",
-    role: "admin",
-    name: "系統管理員"
-  },
-
-  teacher: {
-    password: "teacher123",
-    role: "teacher",
-    name: "教師"
-  }
-};
 
 // ======================================================
 // 登入
@@ -37,6 +20,10 @@ router.post("/login", (req, res) => {
         message: "請輸入帳號與密碼"
       });
     }
+
+    // 從共用 data.json 取得帳號
+    const data = loadData();
+    const accounts = data.accounts || {};
 
     const account = accounts[username];
 
