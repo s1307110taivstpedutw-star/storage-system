@@ -143,10 +143,8 @@ router.post(
       // 教室 8 ↔ 第 8 格
       // --------------------------------------------------------
 
-      const slot = data.armSlots.find(
-        item =>
-          Number(item.slotId) === id
-      );
+      const slot =
+      data.armSlots[id] || null;
 
       if (slot) {
         slot.roomName = newName;
