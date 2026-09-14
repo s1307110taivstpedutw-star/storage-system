@@ -1,45 +1,72 @@
+
 const express = require("express");
 
 const router = express.Router();
 
-const { loadData, saveData } = require("../data");
-const { requireLogin, requireAdmin } = require("./auth");
+const {
+  loadData,
+  saveData
+} = require("../data");
+
+const {
+  requireLogin,
+  requireAdmin
+} = require("./auth");
+
 
 // ==================================================
 // GET /api/ac-card
 // 取得 8 格冷氣卡資料
 // ==================================================
 
-router.get("/ac-card", requireLogin, (req, res) => {
-  try {
-    const data = loadData();
+router.get(
+  "/ac-card",
+  requireLogin,
+  (req, res) => {
+    try {
+      const data = loadData();
 
-    const cards = data.armSlots.map(slot => ({
-      slotId: slot.slotId,
-      roomName: slot.roomName,
+      const cards =
+        Object.values(data.armSlots).map(
+          slot => ({
+            slotId: slot.slotId,
 
-      acCardNfcId: slot.acCardNfcId || "",
+            roomName:
+              slot.roomName,
 
-      acCardBalance: Number(slot.acCardBalance || 0),
+            acCardNfcId:
+              slot.acCardNfcId || "",
 
-      lowBalance:
-        Number(slot.acCardBalance || 0) < 300
-    }));
+            acCardBalance:
+              Number(
+                slot.acCardBalance || 0
+              ),
 
-    res.json({
-      success: true,
-      cards
-    });
+            lowBalance:
+              Number(
+                slot.acCardBalance || 0
+              ) < 300
+          })
+        );
 
-  } catch (error) {
-    console.error("取得冷氣卡資料錯誤：", error);
+      res.json({
+        success: true,
+        cards
+      });
 
-    res.status(500).json({
-      success: false,
-      message: "無法取得冷氣卡資料"
-    });
+    } catch (error) {
+      console.error(
+        "取得冷氣卡資料錯誤：",
+        error
+      );
+
+      res.status(500).json({
+        success: false,
+        message: "無法取得冷氣卡資料"
+      });
+    }
   }
-});
+);
 
 
 // ==================================================
@@ -52,7 +79,8 @@ router.get(
   requireLogin,
   (req, res) => {
     try {
-      const slotId = Number(req.params.slotId);
+      const slotId =
+        Number(req.params.slotId);
 
       if (
         !Number.isInteger(slotId) ||
@@ -67,9 +95,8 @@ router.get(
 
       const data = loadData();
 
-      const slot = data.armSlots.find(
-        item => Number(item.slotId) === slotId
-      );
+      const slot =
+        data.armSlots[slotId] || null;
 
       if (!slot) {
         return res.status(404).json({
@@ -79,15 +106,19 @@ router.get(
       }
 
       const balance =
-        Number(slot.acCardBalance || 0);
+        Number(
+          slot.acCardBalance || 0
+        );
 
       res.json({
         success: true,
 
         card: {
-          slotId: slot.slotId,
+          slotId:
+            slot.slotId,
 
-          roomName: slot.roomName,
+          roomName:
+            slot.roomName,
 
           acCardNfcId:
             slot.acCardNfcId || "",
@@ -101,7 +132,10 @@ router.get(
       });
 
     } catch (error) {
-      console.error("取得指定冷氣卡錯誤：", error);
+      console.error(
+        "取得指定冷氣卡錯誤：",
+        error
+      );
 
       res.status(500).json({
         success: false,
@@ -122,7 +156,8 @@ router.post(
   requireAdmin,
   (req, res) => {
     try {
-      const slotId = Number(req.params.slotId);
+      const slotId =
+        Number(req.params.slotId);
 
       if (
         !Number.isInteger(slotId) ||
@@ -137,9 +172,8 @@ router.post(
 
       const data = loadData();
 
-      const slot = data.armSlots.find(
-        item => Number(item.slotId) === slotId
-      );
+      const slot =
+        data.armSlots[slotId] || null;
 
       if (!slot) {
         return res.status(404).json({
@@ -158,9 +192,13 @@ router.post(
       // 更新 NFC ID
       // ----------------------------------------------
 
-      if (acCardNfcId !== undefined) {
+      if (
+        acCardNfcId !== undefined
+      ) {
         slot.acCardNfcId =
-          String(acCardNfcId).trim();
+          String(
+            acCardNfcId
+          ).trim();
       }
 
 
@@ -168,7 +206,9 @@ router.post(
       // 更新餘額
       // ----------------------------------------------
 
-      if (acCardBalance !== undefined) {
+      if (
+        acCardBalance !== undefined
+      ) {
         const balance =
           Number(acCardBalance);
 
@@ -178,11 +218,13 @@ router.post(
         ) {
           return res.status(400).json({
             success: false,
-            message: "冷氣卡餘額必須是 0 以上的數字"
+            message:
+              "冷氣卡餘額必須是 0 以上的數字"
           });
         }
 
-        slot.acCardBalance = balance;
+        slot.acCardBalance =
+          balance;
       }
 
 
@@ -193,7 +235,9 @@ router.post(
       saveData(data);
 
       const balance =
-        Number(slot.acCardBalance || 0);
+        Number(
+          slot.acCardBalance || 0
+        );
 
       res.json({
         success: true,
@@ -202,9 +246,11 @@ router.post(
           `第 ${slotId} 格冷氣卡資料更新成功`,
 
         card: {
-          slotId: slot.slotId,
+          slotId:
+            slot.slotId,
 
-          roomName: slot.roomName,
+          roomName:
+            slot.roomName,
 
           acCardNfcId:
             slot.acCardNfcId || "",
@@ -218,11 +264,15 @@ router.post(
       });
 
     } catch (error) {
-      console.error("更新冷氣卡資料錯誤：", error);
+      console.error(
+        "更新冷氣卡資料錯誤：",
+        error
+      );
 
       res.status(500).json({
         success: false,
-        message: "更新冷氣卡資料失敗"
+        message:
+          "更新冷氣卡資料失敗"
       });
     }
   }
@@ -241,7 +291,8 @@ router.post(
   requireLogin,
   (req, res) => {
     try {
-      const slotId = Number(req.params.slotId);
+      const slotId =
+        Number(req.params.slotId);
 
       const balance =
         Number(req.body.balance);
@@ -253,7 +304,8 @@ router.post(
       ) {
         return res.status(400).json({
           success: false,
-          message: "格位編號必須是 1～8"
+          message:
+            "格位編號必須是 1～8"
         });
       }
 
@@ -263,24 +315,26 @@ router.post(
       ) {
         return res.status(400).json({
           success: false,
-          message: "冷氣卡餘額格式錯誤"
+          message:
+            "冷氣卡餘額格式錯誤"
         });
       }
 
       const data = loadData();
 
-      const slot = data.armSlots.find(
-        item => Number(item.slotId) === slotId
-      );
+      const slot =
+        data.armSlots[slotId] || null;
 
       if (!slot) {
         return res.status(404).json({
           success: false,
-          message: "找不到指定格位"
+          message:
+            "找不到指定格位"
         });
       }
 
-      slot.acCardBalance = balance;
+      slot.acCardBalance =
+        balance;
 
       saveData(data);
 
@@ -299,11 +353,15 @@ router.post(
       });
 
     } catch (error) {
-      console.error("更新冷氣卡餘額錯誤：", error);
+      console.error(
+        "更新冷氣卡餘額錯誤：",
+        error
+      );
 
       res.status(500).json({
         success: false,
-        message: "更新冷氣卡餘額失敗"
+        message:
+          "更新冷氣卡餘額失敗"
       });
     }
   }
@@ -320,11 +378,14 @@ router.post(
   requireAdmin,
   (req, res) => {
     try {
-      const slotId = Number(req.params.slotId);
+      const slotId =
+        Number(req.params.slotId);
 
       const nfcId =
         req.body.nfcId !== undefined
-          ? String(req.body.nfcId).trim()
+          ? String(
+              req.body.nfcId
+            ).trim()
           : "";
 
       if (
@@ -334,24 +395,26 @@ router.post(
       ) {
         return res.status(400).json({
           success: false,
-          message: "格位編號必須是 1～8"
+          message:
+            "格位編號必須是 1～8"
         });
       }
 
       const data = loadData();
 
-      const slot = data.armSlots.find(
-        item => Number(item.slotId) === slotId
-      );
+      const slot =
+        data.armSlots[slotId] || null;
 
       if (!slot) {
         return res.status(404).json({
           success: false,
-          message: "找不到指定格位"
+          message:
+            "找不到指定格位"
         });
       }
 
-      slot.acCardNfcId = nfcId;
+      slot.acCardNfcId =
+        nfcId;
 
       saveData(data);
 
@@ -368,11 +431,15 @@ router.post(
       });
 
     } catch (error) {
-      console.error("更新冷氣卡 NFC 錯誤：", error);
+      console.error(
+        "更新冷氣卡 NFC 錯誤：",
+        error
+      );
 
       res.status(500).json({
         success: false,
-        message: "更新冷氣卡 NFC ID 失敗"
+        message:
+          "更新冷氣卡 NFC ID 失敗"
       });
     }
   }
@@ -392,24 +459,35 @@ router.get(
       const data = loadData();
 
       const lowBalanceCards =
-        data.armSlots
+        Object.values(
+          data.armSlots
+        )
           .filter(
             slot =>
-              Number(slot.acCardBalance || 0) < 300
+              Number(
+                slot.acCardBalance || 0
+              ) < 300
           )
-          .map(slot => ({
-            slotId: slot.slotId,
+          .map(
+            slot => ({
+              slotId:
+                slot.slotId,
 
-            roomName: slot.roomName,
+              roomName:
+                slot.roomName,
 
-            acCardNfcId:
-              slot.acCardNfcId || "",
+              acCardNfcId:
+                slot.acCardNfcId || "",
 
-            acCardBalance:
-              Number(slot.acCardBalance || 0),
+              acCardBalance:
+                Number(
+                  slot.acCardBalance || 0
+                ),
 
-            lowBalance: true
-          }));
+              lowBalance:
+                true
+            })
+          );
 
       res.json({
         success: true,
@@ -429,7 +507,8 @@ router.get(
 
       res.status(500).json({
         success: false,
-        message: "無法取得低餘額冷氣卡"
+        message:
+          "無法取得低餘額冷氣卡"
       });
     }
   }
@@ -441,3 +520,4 @@ router.get(
 // ==================================================
 
 module.exports = router;
+
