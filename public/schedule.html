@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -241,11 +242,11 @@
                 📅 教室課表設置
             </a>
 
-            <!-- ★ 冷氣卡管理已接上 -->
             <a href="/ac-card.html">
                 ❄️ 冷氣卡金額管理
             </a>
 
+            <!-- 帳號管理：只有管理員可以看到 -->
             <a href="/accounts.html" id="accountsMenu">
                 👤 帳號管理
             </a>
@@ -414,12 +415,31 @@
                     : "老師";
 
 
+            // =========================
+            // 管理員功能
+            // =========================
+
             if (currentUser.role === "admin") {
 
                 document.getElementById(
                     "adminPanel"
                 ).style.display =
                     "block";
+
+            }
+
+
+            // =========================
+            // 帳號管理選單
+            // 只有管理員可以看到
+            // =========================
+
+            if (currentUser.role !== "admin") {
+
+                document.getElementById(
+                    "accountsMenu"
+                ).style.display =
+                    "none";
 
             }
 
