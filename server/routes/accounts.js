@@ -3,28 +3,25 @@ const express = require("express");
 const router = express.Router();
 
 const { requireAdmin } = require("./auth");
+const { loadData, saveData } = require("../data");
+
 
 // ==================================================
-// 目前帳號資料
-//
-// 注意：
-// 這一版先獨立建立帳號管理模組。
-// 下一階段再把帳號正式移到 data.json。
+// 取得帳號資料
 // ==================================================
 
-const accounts = {
-  admin: {
-    password: "admin123",
-    role: "admin",
-    name: "系統管理員"
-  },
+function getAccounts() {
+  const data = loadData();
 
-  teacher: {
-    password: "teacher123",
-    role: "teacher",
-    name: "教師"
+  if (!data.accounts) {
+    data.accounts = {};
   }
-};
+
+  return {
+    data,
+    accounts: data.accounts
+  };
+}
 
 
 // ==================================================
@@ -37,6 +34,8 @@ router.get(
   requireAdmin,
   (req, res) => {
     try {
+      const { accounts } = getAccounts();
+
       const accountList = Object.entries(accounts).map(
         ([username, account]) => ({
           username,
@@ -79,10 +78,6 @@ router.post(
         name
       } = req.body;
 
-      // ----------------------------------------------
-      // 基本檢查
-      // ----------------------------------------------
-
       if (
         !username ||
         !password ||
@@ -104,10 +99,6 @@ router.post(
       const accountName =
         String(name).trim();
 
-      // ----------------------------------------------
-      // 檢查帳號格式
-      // ----------------------------------------------
-
       if (accountUsername.length < 3) {
         return res.status(400).json({
           success: false,
@@ -122,10 +113,6 @@ router.post(
         });
       }
 
-      // ----------------------------------------------
-      // 檢查角色
-      // ----------------------------------------------
-
       if (
         role !== "admin" &&
         role !== "teacher"
@@ -136,9 +123,7 @@ router.post(
         });
       }
 
-      // ----------------------------------------------
-      // 檢查帳號是否已存在
-      // ----------------------------------------------
+      const { data, accounts } = getAccounts();
 
       if (accounts[accountUsername]) {
         return res.status(409).json({
@@ -147,15 +132,13 @@ router.post(
         });
       }
 
-      // ----------------------------------------------
-      // 建立帳號
-      // ----------------------------------------------
-
       accounts[accountUsername] = {
         password: accountPassword,
         role,
         name: accountName
       };
+
+      saveData(data);
 
       res.json({
         success: true,
@@ -193,9 +176,7 @@ router.delete(
       const username =
         String(req.params.username).trim();
 
-      // ----------------------------------------------
-      // 確認帳號存在
-      // ----------------------------------------------
+      const { data, accounts } = getAccounts();
 
       if (!accounts[username]) {
         return res.status(404).json({
@@ -204,10 +185,7 @@ router.delete(
         });
       }
 
-      // ----------------------------------------------
-      // 不允許刪除目前登入中的帳號
-      // ----------------------------------------------
-
+      // 不能刪除目前登入帳號
       if (
         req.session.user &&
         req.session.user.username === username
@@ -218,11 +196,23 @@ router.delete(
         });
       }
 
-      // ----------------------------------------------
-      // 刪除帳號
-      // ----------------------------------------------
+      // 不允許刪除最後一個管理員
+      if (accounts[username].role === "admin") {
+        const adminCount = Object.values(accounts)
+          .filter(account => account.role === "admin")
+          .length;
+
+        if (adminCount <= 1) {
+          return res.status(400).json({
+            success: false,
+            message: "不能刪除最後一個管理員"
+          });
+        }
+      }
 
       delete accounts[username];
+
+      saveData(data);
 
       res.json({
         success: true,
@@ -254,6 +244,8 @@ router.post(
       const username =
         String(req.params.username).trim();
 
+      const { data, accounts } = getAccounts();
+
       const account = accounts[username];
 
       if (!account) {
@@ -268,6 +260,7 @@ router.post(
         role,
         name
       } = req.body;
+
 
       // ----------------------------------------------
       // 修改密碼
@@ -287,11 +280,13 @@ router.post(
         account.password = newPassword;
       }
 
+
       // ----------------------------------------------
       // 修改角色
       // ----------------------------------------------
 
       if (role !== undefined) {
+
         if (
           role !== "admin" &&
           role !== "teacher"
@@ -302,8 +297,26 @@ router.post(
           });
         }
 
+        // 不允許最後一個管理員降級
+        if (
+          account.role === "admin" &&
+          role === "teacher"
+        ) {
+          const adminCount = Object.values(accounts)
+            .filter(item => item.role === "admin")
+            .length;
+
+          if (adminCount <= 1) {
+            return res.status(400).json({
+              success: false,
+              message: "不能將最後一個管理員降級"
+            });
+          }
+        }
+
         account.role = role;
       }
+
 
       // ----------------------------------------------
       // 修改姓名
@@ -314,9 +327,23 @@ router.post(
           String(name).trim();
       }
 
+
+      saveData(data);
+
+
       // ----------------------------------------------
-      // 回傳
+      // 如果修改的是目前登入者
+      // 同步更新 Session
       // ----------------------------------------------
+
+      if (
+        req.session.user &&
+        req.session.user.username === username
+      ) {
+        req.session.user.role = account.role;
+        req.session.user.name = account.name;
+      }
+
 
       res.json({
         success: true,
@@ -353,6 +380,8 @@ router.get(
     try {
       const username =
         String(req.params.username).trim();
+
+      const { accounts } = getAccounts();
 
       const account = accounts[username];
 
@@ -391,6 +420,5 @@ router.get(
 // ==================================================
 
 module.exports = {
-  router,
-  accounts
+  router
 };
