@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>帳號管理</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 30px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .back-button {
+      padding: 10px 16px;
+      background: #6c757d;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    input,
+    select,
+    button {
+      padding: 10px;
+      box-sizing: border-box;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      border: none;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    .delete-button {
+      background: #dc3545;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid #ddd;
+      padding: 12px;
+      text-align: left;
+    }
+
+    th {
+      background: #f8f9fa;
+    }
+
+    #message {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    @media (max-width: 700px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="top-bar">
+    <h1>👤 帳號管理</h1>
+
+    <a class="back-button" href="/schedule.html">
+      返回系統
+    </a>
+  </div>
+
+  <div class="card">
+
+    <h2>新增帳號</h2>
+
+    <div class="form-grid">
+
+      <input
+        type="text"
+        id="username"
+        placeholder="帳號"
+      >
+
+      <input
+        type="password"
+        id="password"
+        placeholder="密碼"
+      >
+
+      <input
+        type="text"
+        id="name"
+        placeholder="姓名"
+      >
+
+      <select id="role">
+        <option value="teacher">教師</option>
+        <option value="admin">管理員</option>
+      </select>
+
+    </div>
+
+    <br>
+
+    <button onclick="addAccount()">
+      新增帳號
+    </button>
+
+    <div id="message"></div>
+
+  </div>
+
+
+  <div class="card">
+
+    <h2>目前帳號</h2>
+
+    <table>
+
+      <thead>
+        <tr>
+          <th>帳號</th>
+          <th>姓名</th>
+          <th>角色</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+
+      <tbody id="accountTable">
+        <tr>
+          <td colspan="4">
+            載入中...
+          </td>
+        </tr>
+      </tbody>
+
+    </table>
+
+  </div>
+
+</div>
+
+
+<script>
+
+async function checkLogin() {
+
+  try {
+
+    const response =
+      await fetch('/api/me');
+
+    const data =
+      await response.json();
+
+    if (!data.loggedIn) {
+
+      window.location.href = '/';
+
+      return false;
+    }
+
+    if (data.user.role !== 'admin') {
+
+      alert('只有管理員可以使用帳號管理');
+
+      window.location.href = '/schedule.html';
+
+      return false;
+    }
+
+    return true;
+
+  } catch (error) {
+
+    alert('無法確認登入狀態');
+
+    window.location.href = '/';
+
+    return false;
+  }
+}
+
+
+async function loadAccounts() {
+
+  try {
+
+    const response =
+      await fetch('/api/accounts');
+
+    const data =
+      await response.json();
+
+    if (!response.ok || !data.success) {
+
+      throw new Error(
+        data.message || '取得帳號失敗'
+      );
+    }
+
+    const table =
+      document.getElementById('accountTable');
+
+    table.innerHTML = '';
+
+    data.accounts.forEach(account => {
+
+      const row =
+        document.createElement('tr');
+
+      const roleText =
+        account.role === 'admin'
+          ? '管理員'
+          : '教師';
+
+      row.innerHTML = `
+        <td>${escapeHtml(account.username)}</td>
+        <td>${escapeHtml(account.name)}</td>
+        <td>${roleText}</td>
+        <td>
+          <button
+            onclick="editAccount(
+              '${escapeJs(account.username)}',
+              '${escapeJs(account.name)}',
+              '${account.role}'
+            )"
+          >
+            修改
+          </button>
+
+          <button
+            class="delete-button"
+            onclick="deleteAccount(
+              '${escapeJs(account.username)}'
+            )"
+          >
+            刪除
+          </button>
+        </td>
+      `;
+
+      table.appendChild(row);
+
+    });
+
+  } catch (error) {
+
+    document.getElementById('accountTable').innerHTML =
+      `<tr>
+        <td colspan="4">
+          ${escapeHtml(error.message)}
+        </td>
+      </tr>`;
+  }
+}
+
+
+async function addAccount() {
+
+  const username =
+    document.getElementById('username').value.trim();
+
+  const password =
+    document.getElementById('password').value;
+
+  const name =
+    document.getElementById('name').value.trim();
+
+  const role =
+    document.getElementById('role').value;
+
+  if (!username || !password || !name) {
+
+    showMessage(
+      '請完整填寫資料',
+      'red'
+    );
+
+    return;
+  }
+
+  try {
+
+    const response =
+      await fetch('/api/accounts', {
+
+        method: 'POST',
+
+        headers: {
+          'Content-Type': 'application/json'
+        },
+
+        body: JSON.stringify({
+          username,
+          password,
+          name,
+          role
+        })
+
+      });
+
+    const data =
+      await response.json();
+
+    if (!response.ok || !data.success) {
+
+      showMessage(
+        data.message || '新增失敗',
+        'red'
+      );
+
+      return;
+    }
+
+    showMessage(
+      '帳號新增成功',
+      'green'
+    );
+
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+    document.getElementById('name').value = '';
+
+    loadAccounts();
+
+  } catch (error) {
+
+    showMessage(
+      '連線失敗',
+      'red'
+    );
+  }
+}
+
+
+async function editAccount(
+  username,
+  currentName,
+  currentRole
+) {
+
+  const name =
+    prompt(
+      '請輸入新姓名：',
+      currentName
+    );
+
+  if (name === null) {
+    return;
+  }
+
+  const role =
+    prompt(
+      '請輸入角色：admin 或 teacher',
+      currentRole
+    );
+
+  if (role === null) {
+    return;
+  }
+
+  const password =
+    prompt(
+      '若要修改密碼請輸入新密碼；不修改請留空'
+    );
+
+  if (password === null) {
+    return;
+  }
+
+  const body = {
+    name: name.trim(),
+    role: role.trim()
+  };
+
+  if (password.trim() !== '') {
+    body.password = password;
+  }
+
+  try {
+
+    const response =
+      await fetch(
+        `/api/accounts/${encodeURIComponent(username)}`,
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type': 'application/json'
+          },
+
+          body: JSON.stringify(body)
+        }
+      );
+
+    const data =
+      await response.json();
+
+    if (!response.ok || !data.success) {
+
+      alert(
+        data.message || '修改失敗'
+      );
+
+      return;
+    }
+
+    alert('帳號修改成功');
+
+    loadAccounts();
+
+  } catch (error) {
+
+    alert('連線失敗');
+  }
+}
+
+
+async function deleteAccount(username) {
+
+  if (
+    !confirm(
+      `確定要刪除帳號「${username}」嗎？`
+    )
+  ) {
+    return;
+  }
+
+  try {
+
+    const response =
+      await fetch(
+        `/api/accounts/${encodeURIComponent(username)}`,
+        {
+          method: 'DELETE'
+        }
+      );
+
+    const data =
+      await response.json();
+
+    if (!response.ok || !data.success) {
+
+      alert(
+        data.message || '刪除失敗'
+      );
+
+      return;
+    }
+
+    alert('帳號刪除成功');
+
+    loadAccounts();
+
+  } catch (error) {
+
+    alert('連線失敗');
+  }
+}
+
+
+function showMessage(text, color) {
+
+  const message =
+    document.getElementById('message');
+
+  message.textContent = text;
+  message.style.color = color;
+}
+
+
+function escapeHtml(value) {
+
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+
+function escapeJs(value) {
+
+  return String(value)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'");
+}
+
+
+(async function init() {
+
+  const loggedIn =
+    await checkLogin();
+
+  if (loggedIn) {
+    await loadAccounts();
+  }
+
+})();
+
+</script>
+
+</body>
+</html>
