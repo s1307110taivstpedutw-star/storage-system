@@ -30,10 +30,7 @@ function getSlotByClassroom(
   const id =
     Number(classroomId);
 
-  return data.armSlots.find(
-    slot =>
-      Number(slot.slotId) === id
-  );
+  return data.armSlots[id] || null;
 
 }
 
