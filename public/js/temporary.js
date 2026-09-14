@@ -401,28 +401,32 @@ function renderBookings() {
       }
 
 
-      /* =========================
-         已核准／待執行
-         ========================= */
+/* =========================
+   已借出
+   ========================= */
 
-      else if (
-        currentUser &&
-        currentUser.role === "admin" &&
-        booking.status === "approved"
-      ) {
+else if (
+  currentUser &&
+  currentUser.role === "admin" &&
+  (
+    booking.status === "borrowed" ||
+    booking.status === "已借出" ||
+    booking.status === "已逾期歸還"
+  )
+) {
 
-        actionHTML = `
+  actionHTML = `
 
-          <button
-            class="btn-success"
-            onclick="completeBooking(${booking.id})"
-          >
-            完成借還
-          </button>
+    <button
+      class="btn-success"
+      onclick="completeBooking(${booking.id})"
+    >
+      完成借還
+    </button>
 
-        `;
+  `;
 
-      }
+}
 
 
       /* =========================
