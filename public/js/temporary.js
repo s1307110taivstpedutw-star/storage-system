@@ -1,8 +1,10 @@
+```javascript
 let currentUser = null;
 let bookings = [];
 let slots = [];
 
 let overdueCheckTimer = null;
+
 
 /* =========================================================
    頁面初始化
@@ -72,9 +74,12 @@ async function loadUser() {
 
     await loadSlots();
 
+
     /*
       管理員頁面啟動自動時間檢查。
+
       每 30 秒檢查一次：
+
       1. 已核准但未借出，到歸還時間 → 已取消
       2. 已借出，到歸還時間 → 已逾期歸還
     */
@@ -438,7 +443,7 @@ function renderBookings() {
         已核准／待執行
 
         保留模擬借出。
-        不再顯示「測試逾期」。
+        不顯示「測試逾期」。
       */
 
       else if (
@@ -1188,8 +1193,47 @@ async function loadSlots() {
     }
 
 
-    slots =
-      result.slots || [];
+    /*
+      ★ 修正重點
+
+      data.js 的 armSlots 是物件：
+
+      {
+        1: {...},
+        2: {...},
+        ...
+        8: {...}
+      }
+
+      但前端需要陣列：
+
+      [
+        {...},
+        {...},
+        ...
+      ]
+
+      因此使用 Object.values()
+      將物件轉成陣列。
+    */
+
+    if (
+      result.slots &&
+      typeof result.slots === "object" &&
+      !Array.isArray(result.slots)
+    ) {
+
+      slots =
+        Object.values(
+          result.slots
+        );
+
+    } else {
+
+      slots =
+        result.slots || [];
+
+    }
 
 
     slots.sort(
@@ -1441,3 +1485,4 @@ function escapeHTML(value) {
     );
 
 }
+```
