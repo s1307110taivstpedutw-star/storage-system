@@ -419,6 +419,4 @@ router.get(
 // 匯出 Router
 // ==================================================
 
-module.exports = {
-  router
-};
+module.exports = router;
