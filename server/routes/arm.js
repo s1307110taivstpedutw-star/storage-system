@@ -212,7 +212,76 @@ router.post("/arm/reset-all", requireAdmin, (req, res) => {
 
 
 // ==================================================
-// 匯出 Router
+// POST /api/esp32/slot/:id/status
+// ESP32 回報機械手臂格位狀態
 // ==================================================
 
+router.post("/esp32/slot/:id/status", (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { status } = req.body;
+
+    if (!Number.isInteger(id) || id < 1 || id > 8) {
+      return res.status(400).json({
+        success: false,
+        message: "格位編號必須是 1～8"
+      });
+    }
+
+    const data = loadData();
+
+    const slot = data.armSlots.find(
+      item => Number(item.slotId) === id
+    );
+
+    if (!slot) {
+      return res.status(404).json({
+        success: false,
+        message: "找不到機械手臂格位"
+      });
+    }
+
+    if (
+      status !== "已借出" &&
+      status !== "未借出"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "ESP32 狀態只能回報「已借出」或「未借出」"
+      });
+    }
+
+    slot.status = status;
+
+    if (status === "未借出") {
+      slot.borrower = "";
+      slot.borrowTime = "";
+    }
+
+    saveData(data);
+
+    console.log(
+      `ESP32 回報：第 ${id} 格 → ${status}`
+    );
+
+    res.json({
+      success: true,
+      message:
+        `第 ${id} 格狀態已更新為 ${status}`,
+      slot
+    });
+
+  } catch (error) {
+    console.error(
+      "ESP32 狀態回報錯誤：",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      message: "ESP32 狀態更新失敗"
+    });
+  }
+});
 module.exports = router;
