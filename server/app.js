@@ -10,6 +10,14 @@ const temporaryRouter = require("./routes/temporary");
 const acCardRouter = require("./routes/ac-card");
 const accountsRouter = require("./routes/accounts");
 
+console.log("ROUTER CHECK");
+console.log("auth:", typeof auth.router);
+console.log("classroomsRouter:", typeof classroomsRouter);
+console.log("armRouter:", typeof armRouter);
+console.log("temporaryRouter:", typeof temporaryRouter);
+console.log("acCardRouter:", typeof acCardRouter);
+console.log("accountsRouter:", typeof accountsRouter);
+
 const app = express();
 
 // ================================
