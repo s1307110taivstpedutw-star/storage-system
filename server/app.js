@@ -1,6 +1,7 @@
 const express = require("express");
 const session = require("express-session");
 const path = require("path");
+const fs = require("fs");
 
 const auth = require("./routes/auth");
 const classroomsRouter = require("./routes/classrooms");
@@ -79,6 +80,65 @@ app.get("/ping", (req, res) => {
   res.send("pong");
 });
 
+app.get("/api/debug/data", auth.requireAdmin, (req, res) => {
+  try {
+    const dataFile = path.join(__dirname, "..", "data.json");
+    const exists = fs.existsSync(dataFile);
+
+    if (!exists) {
+      return res.json({
+        success: true,
+        exists: false,
+        message: "目前找不到 data.json"
+      });
+    }
+
+    const raw = fs.readFileSync(dataFile, "utf8");
+
+    if (!raw.trim()) {
+      return res.json({
+        success: true,
+        exists: true,
+        empty: true,
+        message: "data.json 存在，但內容是空的"
+      });
+    }
+
+    const data = JSON.parse(raw);
+
+    const classrooms = data.classrooms || {};
+    const accounts = data.accounts || {};
+
+    const classroomInfo = Object.keys(classrooms).map((id) => ({
+      id: classrooms[id].id,
+      name: classrooms[id].name,
+      scheduleCount: Array.isArray(classrooms[id].schedules)
+        ? classrooms[id].schedules.length
+        : 0
+    }));
+
+    res.json({
+      success: true,
+      exists: true,
+      empty: false,
+      dataFile,
+      classroomCount: Object.keys(classrooms).length,
+      classroomInfo,
+      accountCount: Object.keys(accounts).length,
+      temporaryBookingCount: Array.isArray(data.temporaryBookings)
+        ? data.temporaryBookings.length
+        : 0
+    });
+
+  } catch (error) {
+    console.error("資料診斷錯誤：", error);
+
+    res.status(500).json({
+      success: false,
+      message: "讀取 data.json 失敗"
+    });
+  }
+});
 // ================================
 // 首頁
 // ================================
