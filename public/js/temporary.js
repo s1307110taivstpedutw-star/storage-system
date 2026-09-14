@@ -985,6 +985,98 @@ async function simulateBorrowed(id) {
 
 
 /* =========================================================
+   測試逾期
+   =========================================================
+   ★ 測試用途
+   ★ 模擬系統發現借用時間已經超過
+   ★ 將「已借出」改成「已逾期歸還」
+   ========================================================= */
+
+async function testOverdue(id) {
+
+  const booking =
+    bookings.find(
+      item =>
+        Number(item.id) ===
+        Number(id)
+    );
+
+  if (!booking) {
+
+    alert(
+      "找不到這筆借用紀錄"
+    );
+
+    return;
+
+  }
+
+  const ok =
+    confirm(
+      `確定要測試「逾期」嗎？\n\n` +
+      `教室：${
+        booking.classroomName || "-"
+      }\n` +
+      `原結束時間：${
+        booking.date || "-"
+      } ${
+        booking.endTime || "-"
+      }\n\n` +
+      `測試後會將狀態改成「已逾期歸還」。`
+    );
+
+  if (!ok) {
+    return;
+  }
+
+  try {
+
+    const response =
+      await fetch(
+        `/api/temporary-bookings/${id}/overdue`,
+        {
+          method: "POST"
+        }
+      );
+
+    const result =
+      await response.json();
+
+    if (!result.success) {
+
+      alert(
+        result.message ||
+        "測試逾期失敗"
+      );
+
+      return;
+
+    }
+
+    alert(
+      "已測試為逾期借用！"
+    );
+
+    await loadBookings();
+    await loadSlots();
+
+  } catch (error) {
+
+    console.error(
+      "testOverdue 發生錯誤：",
+      error
+    );
+
+    alert(
+      "連線失敗：" +
+      error.message
+    );
+
+  }
+
+}
+
+/* =========================================================
    完成借還
    ========================================================= */
 
