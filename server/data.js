@@ -1,318 +1,591 @@
 const fs = require("fs");
 const path = require("path");
 
-const DATA_FILE = path.join(__dirname, "..", "data.json");
+
+/* ==================================================
+   資料檔案
+   ================================================== */
+
+const DATA_FILE =
+  path.join(
+    __dirname,
+    "..",
+    "data.json"
+  );
 
 
-// ==============================
-// 建立預設資料
-// ==============================
+/* ==================================================
+   預設機械手臂 8 格
+   ================================================== */
 
-function createDefaultData() {
-  const armSlots = Array.from({ length: 8 }, (_, i) => ({
-    slotId: i + 1,
-    roomName: `教室 ${i + 1}`,
+function getDefaultArmSlots() {
 
-    // 鑰匙
-    keyName: "",
-    keyNfcId: "",
+  const armSlots = {};
 
-    // 冷氣卡
-    acCardNfcId: "",
-    acCardBalance: 0,
+  for (
+    let i = 1;
+    i <= 8;
+    i++
+  ) {
 
-    // 借用資訊
-    borrower: "",
-    borrowTime: "",
+    armSlots[i] = {
 
-    // 狀態
-    status: "未借出",
+      slotId: i,
 
-    // 對應臨時借用
-    bookingId: null
-  }));
+      roomName:
+        `教室 ${i}`,
 
+      keyName:
+        "",
+
+      borrower:
+        "",
+
+      borrowTime:
+        "",
+
+      status:
+        "未借出",
+
+      bookingId:
+        null
+
+    };
+
+  }
+
+  return armSlots;
+
+}
+
+
+/* ==================================================
+   預設 8 間教室
+   ================================================== */
+
+function getDefaultClassrooms() {
 
   const classrooms = {};
 
-  for (let i = 1; i <= 8; i++) {
+  for (
+    let i = 1;
+    i <= 8;
+    i++
+  ) {
+
     classrooms[i] = {
+
       id: i,
-      name: `教室 ${i}`,
-      schedules: []
+
+      name:
+        `教室 ${i}`,
+
+      schedules:
+        []
+
     };
+
   }
 
+  return classrooms;
 
-  // 帳號資料
-  const accounts = {
+}
+
+
+/* ==================================================
+   預設帳號
+   ================================================== */
+
+function getDefaultAccounts() {
+
+  return {
+
     admin: {
-      password: "admin123",
-      role: "admin",
-      name: "系統管理員"
+
+      username:
+        "admin",
+
+      password:
+        "admin123",
+
+      role:
+        "admin",
+
+      name:
+        "系統管理員"
+
     },
 
     teacher: {
-      password: "teacher123",
-      role: "teacher",
-      name: "教師"
+
+      username:
+        "teacher",
+
+      password:
+        "teacher123",
+
+      role:
+        "teacher",
+
+      name:
+        "教師"
+
     }
+
   };
 
-
-  return {
-    armSlots,
-    classrooms,
-    temporaryBookings: [],
-    accounts
-  };
 }
 
 
-// ==============================
-// 資料格式整理
-// ==============================
+/* ==================================================
+   預設系統資料
+   ================================================== */
 
-function normalizeData(data) {
-  const defaultData = createDefaultData();
+function getDefaultData() {
 
-  if (!data || typeof data !== "object") {
-    return defaultData;
-  }
+  return {
 
+    armSlots:
+      getDefaultArmSlots(),
 
-  // ------------------------------
-  // 機械手臂格位
-  // ------------------------------
+    classrooms:
+      getDefaultClassrooms(),
 
-  if (!Array.isArray(data.armSlots)) {
-    data.armSlots = defaultData.armSlots;
-  }
+    temporaryBookings:
+      [],
 
-  while (data.armSlots.length < 8) {
-    const i = data.armSlots.length;
+    accounts:
+      getDefaultAccounts()
 
-    data.armSlots.push({
-      ...defaultData.armSlots[i]
-    });
-  }
+  };
 
-  data.armSlots = data.armSlots.slice(0, 8);
+}
 
 
-  data.armSlots.forEach((slot, index) => {
-    slot.slotId = index + 1;
+/* ==================================================
+   有效的機械手臂狀態
+   ================================================== */
 
-    if (!slot.roomName) {
-      slot.roomName = `教室 ${index + 1}`;
-    }
+const validStatuses = [
 
-    if (slot.keyName === undefined) {
-      slot.keyName = "";
-    }
+  "未借出",
 
-    if (slot.keyNfcId === undefined) {
-      slot.keyNfcId = "";
-    }
+  "已核准／待執行",
 
-    if (slot.acCardNfcId === undefined) {
-      slot.acCardNfcId = "";
-    }
+  "已借出",
 
-    if (slot.acCardBalance === undefined) {
-      slot.acCardBalance = 0;
-    }
+  "已逾期歸還"
 
-    if (slot.borrower === undefined) {
-      slot.borrower = "";
-    }
-
-    if (slot.borrowTime === undefined) {
-      slot.borrowTime = "";
-    }
-
-    if (slot.bookingId === undefined) {
-      slot.bookingId = null;
-    }
+];
 
 
-    // 舊版狀態轉換
-    if (slot.status === "空閒") {
-      slot.status = "未借出";
-    }
+/* ==================================================
+   資料格式整理
+   ================================================== */
 
-    if (slot.status === "借用中") {
-      slot.status = "未借出";
-    }
+function normalizeData(
+  data
+) {
 
+  const defaultData =
+    getDefaultData();
 
-    // ★ 已加入「已逾期歸還」
-    const validStatuses = [
-      "未借出",
-      "已核准／待執行",
-      "已借出",
-      "已逾期歸還"
-    ];
-
-
-    if (!validStatuses.includes(slot.status)) {
-      slot.status = "未借出";
-    }
-  });
-
-
-  // ------------------------------
-  // 教室
-  // ------------------------------
 
   if (
-    !data.classrooms ||
-    typeof data.classrooms !== "object" ||
-    Array.isArray(data.classrooms)
+    !data ||
+    typeof data !== "object"
   ) {
-    data.classrooms = {};
+
+    return defaultData;
+
   }
 
 
-  for (let i = 1; i <= 8; i++) {
-    if (!data.classrooms[i]) {
-      data.classrooms[i] = {
-        id: i,
-        name: `教室 ${i}`,
-        schedules: []
-      };
-    }
+  /* armSlots */
 
-    if (!data.classrooms[i].name) {
-      data.classrooms[i].name = `教室 ${i}`;
-    }
+  if (
+    !data.armSlots
+  ) {
 
-    if (!Array.isArray(data.classrooms[i].schedules)) {
-      data.classrooms[i].schedules = [];
-    }
+    data.armSlots =
+      defaultData.armSlots;
+
   }
 
 
-  // ------------------------------
-  // 同步格位與教室名稱
-  // ------------------------------
+  /* classrooms */
 
-  data.armSlots.forEach((slot) => {
-    const classroom = data.classrooms[slot.slotId];
+  if (
+    !data.classrooms
+  ) {
 
-    if (classroom) {
-      slot.roomName = classroom.name;
-    }
-  });
+    data.classrooms =
+      defaultData.classrooms;
 
-
-  // ------------------------------
-  // 臨時借用
-  // ------------------------------
-
-  if (!Array.isArray(data.temporaryBookings)) {
-    data.temporaryBookings = [];
   }
 
 
-  // ------------------------------
-  // 帳號
-  // ------------------------------
+  /* temporaryBookings */
+
+  if (
+    !Array.isArray(
+      data.temporaryBookings
+    )
+  ) {
+
+    data.temporaryBookings =
+      [];
+
+  }
+
+
+  /* accounts */
 
   if (
     !data.accounts ||
-    typeof data.accounts !== "object" ||
-    Array.isArray(data.accounts)
+    typeof data.accounts !==
+      "object"
   ) {
-    data.accounts = {};
+
+    data.accounts =
+      defaultData.accounts;
+
   }
 
 
-  if (!data.accounts.admin) {
-    data.accounts.admin = {
-      password: "admin123",
-      role: "admin",
-      name: "系統管理員"
-    };
-  }
+  /* ==================================================
+     確保 1～8 格都存在
+     ================================================== */
 
-
-  if (!data.accounts.teacher) {
-    data.accounts.teacher = {
-      password: "teacher123",
-      role: "teacher",
-      name: "教師"
-    };
-  }
-
-
-  Object.keys(data.accounts).forEach((username) => {
-    const account = data.accounts[username];
-
-    if (!account || typeof account !== "object") {
-      delete data.accounts[username];
-      return;
-    }
-
-    if (account.password === undefined) {
-      account.password = "";
-    }
+  for (
+    let i = 1;
+    i <= 8;
+    i++
+  ) {
 
     if (
-      account.role !== "admin" &&
-      account.role !== "teacher"
+      !data.armSlots[i]
     ) {
-      account.role = "teacher";
+
+      data.armSlots[i] =
+        defaultData.armSlots[i];
+
     }
 
-    if (account.name === undefined) {
-      account.name = username;
+
+    if (
+      !data.classrooms[i]
+    ) {
+
+      data.classrooms[i] =
+        defaultData.classrooms[i];
+
     }
-  });
+
+
+    if (
+      !Array.isArray(
+        data.classrooms[i]
+          .schedules
+      )
+    ) {
+
+      data.classrooms[i]
+        .schedules = [];
+
+    }
+
+
+    /*
+      舊版空閒
+      → 新版未借出
+    */
+
+    if (
+      data.armSlots[i].status ===
+      "空閒"
+    ) {
+
+      data.armSlots[i].status =
+        "未借出";
+
+    }
+
+
+    /*
+      舊版借用中
+      → 不直接視為已借出
+    */
+
+    if (
+      data.armSlots[i].status ===
+      "借用中"
+    ) {
+
+      data.armSlots[i].status =
+        "未借出";
+
+    }
+
+
+    /*
+      ★ 新增：
+
+      已逾期歸還
+
+      必須保留，
+      不能再被正規化成未借出。
+    */
+
+    if (
+      !validStatuses.includes(
+        data.armSlots[i].status
+      )
+    ) {
+
+      data.armSlots[i].status =
+        "未借出";
+
+    }
+
+
+    if (
+      !(
+        "bookingId"
+        in data.armSlots[i]
+      )
+    ) {
+
+      data.armSlots[i].bookingId =
+        null;
+
+    }
+
+  }
+
+
+  /* ==================================================
+     同步教室名稱
+     ================================================== */
+
+  for (
+    let i = 1;
+    i <= 8;
+    i++
+  ) {
+
+    if (
+      data.armSlots[i]
+    ) {
+
+      data.armSlots[i].roomName =
+        data.classrooms[i].name ||
+        `教室 ${i}`;
+
+    }
+
+  }
+
+
+  /* ==================================================
+     整理帳號
+     ================================================== */
+
+  Object.keys(
+    data.accounts
+  ).forEach(
+    username => {
+
+      const account =
+        data.accounts[
+          username
+        ];
+
+
+      if (
+        !account ||
+        typeof account !==
+          "object"
+      ) {
+
+        delete data.accounts[
+          username
+        ];
+
+        return;
+
+      }
+
+
+      if (
+        !account.username
+      ) {
+
+        account.username =
+          username;
+
+      }
+
+
+      if (
+        !account.role
+      ) {
+
+        account.role =
+          "teacher";
+
+      }
+
+
+      if (
+        !account.name
+      ) {
+
+        account.name =
+          username;
+
+      }
+
+    }
+  );
+
+
+  /*
+    確保基本 admin / teacher
+    存在。
+  */
+
+  if (
+    !data.accounts.admin
+  ) {
+
+    data.accounts.admin =
+      defaultData.accounts.admin;
+
+  }
+
+
+  if (
+    !data.accounts.teacher
+  ) {
+
+    data.accounts.teacher =
+      defaultData.accounts.teacher;
+
+  }
 
 
   return data;
+
 }
 
 
-// ==============================
-// 載入資料
-// ==============================
+/* ==================================================
+   載入資料
+   ================================================== */
 
 function loadData() {
+
   try {
-    if (!fs.existsSync(DATA_FILE)) {
-      const data = createDefaultData();
 
-      saveData(data);
+    if (
+      !fs.existsSync(
+        DATA_FILE
+      )
+    ) {
 
-      return data;
+      const newData =
+        getDefaultData();
+
+
+      fs.writeFileSync(
+
+        DATA_FILE,
+
+        JSON.stringify(
+          newData,
+          null,
+          2
+        ),
+
+        "utf8"
+
+      );
+
+
+      return newData;
+
     }
 
 
-    const raw = fs.readFileSync(
+    const raw =
+      fs.readFileSync(
+        DATA_FILE,
+        "utf8"
+      );
+
+
+    if (
+      !raw.trim()
+    ) {
+
+      const newData =
+        getDefaultData();
+
+
+      fs.writeFileSync(
+
+        DATA_FILE,
+
+        JSON.stringify(
+          newData,
+          null,
+          2
+        ),
+
+        "utf8"
+
+      );
+
+
+      return newData;
+
+    }
+
+
+    const data =
+      JSON.parse(
+        raw
+      );
+
+
+    const normalized =
+      normalizeData(
+        data
+      );
+
+
+    /*
+      如果資料結構有新增，
+      順便寫回 data.json。
+    */
+
+    fs.writeFileSync(
+
       DATA_FILE,
+
+      JSON.stringify(
+        normalized,
+        null,
+        2
+      ),
+
       "utf8"
+
     );
 
 
-    if (!raw.trim()) {
-      const data = createDefaultData();
-
-      saveData(data);
-
-      return data;
-    }
-
-
-    const data = JSON.parse(raw);
-
-    const normalizedData =
-      normalizeData(data);
-
-    saveData(normalizedData);
-
-    return normalizedData;
+    return normalized;
 
   } catch (error) {
 
@@ -321,48 +594,72 @@ function loadData() {
       error
     );
 
-    const data =
-      createDefaultData();
 
-    saveData(data);
+    return getDefaultData();
 
-    return data;
   }
+
 }
 
 
-// ==============================
-// 儲存資料
-// ==============================
+/* ==================================================
+   儲存資料
+   ================================================== */
 
-function saveData(data) {
+function saveData(
+  data
+) {
+
   try {
 
+    const normalized =
+      normalizeData(
+        data
+      );
+
+
     fs.writeFileSync(
+
       DATA_FILE,
+
       JSON.stringify(
-        data,
+        normalized,
         null,
         2
       ),
+
       "utf8"
+
     );
+
+
+    return true;
 
   } catch (error) {
 
     console.error(
-      "儲存 data.json 失敗：",
+      "寫入 data.json 失敗：",
       error
     );
 
+
+    return false;
+
   }
+
 }
 
 
+/* ==================================================
+   匯出
+   ================================================== */
+
 module.exports = {
-  DATA_FILE,
-  createDefaultData,
-  normalizeData,
+
   loadData,
-  saveData
+
+  saveData,
+
+  normalizeData
+
 };
