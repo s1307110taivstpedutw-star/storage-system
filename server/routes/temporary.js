@@ -1378,6 +1378,169 @@ router.get(
   }
 );
 
+// ==================================================
+// POST /api/temporary-bookings/check-overdue
+//
+// 檢查所有臨時借用是否逾期
+//
+// 功能：
+// 1. 找出目前「已借出」且已超過結束時間的申請
+// 2. 自動標記為「已逾期歸還」
+// 3. 記錄 overdueAt
+//
+// 注意：
+// 這個 API 之後會由 GitHub Actions 定期呼叫。
+// ==================================================
+
+router.post(
+  "/temporary-bookings/check-overdue",
+  requireAdmin,
+  (req, res) => {
+
+    try {
+
+      const data = loadData();
+
+      const now = new Date();
+
+      let updatedCount = 0;
+
+      const updatedBookings = [];
+
+      data.temporaryBookings.forEach(
+        booking => {
+
+          // ------------------------------------------
+          // 只有已借出才需要檢查
+          // ------------------------------------------
+
+          if (
+            booking.status !== "已借出" &&
+            booking.status !== "borrowed"
+          ) {
+            return;
+          }
+
+
+          // ------------------------------------------
+          // 必須有日期與結束時間
+          // ------------------------------------------
+
+          if (
+            !booking.date ||
+            !booking.endTime
+          ) {
+            return;
+          }
+
+
+          // ------------------------------------------
+          // 組合完整結束時間
+          // ------------------------------------------
+
+          const endDateTime =
+            `${booking.date}T${booking.endTime}:00+08:00`;
+
+          const endTime =
+            new Date(endDateTime);
+
+
+          // ------------------------------------------
+          // 時間格式錯誤
+          // ------------------------------------------
+
+          if (
+            Number.isNaN(
+              endTime.getTime()
+            )
+          ) {
+            return;
+          }
+
+
+          // ------------------------------------------
+          // 判斷是否逾期
+          // ------------------------------------------
+
+          if (
+            endTime.getTime() <
+            now.getTime()
+          ) {
+
+            booking.status =
+              "已逾期歸還";
+
+            booking.statusText =
+              "已逾期歸還";
+
+            booking.overdueAt =
+              now.toISOString();
+
+            updatedCount++;
+
+            updatedBookings.push(
+              booking
+            );
+
+          }
+
+        }
+      );
+
+
+      // ------------------------------------------
+      // 有資料變更才儲存
+      // ------------------------------------------
+
+      if (
+        updatedCount > 0
+      ) {
+
+        saveData(data);
+
+      }
+
+
+      console.log(
+        `逾期檢查完成：` +
+        `發現 ${updatedCount} 筆逾期借用`
+      );
+
+
+      res.json({
+
+        success: true,
+
+        checkedAt:
+          now.toISOString(),
+
+        updatedCount,
+
+        bookings:
+          updatedBookings
+
+      });
+
+    } catch (error) {
+
+      console.error(
+        "檢查逾期借用錯誤：",
+        error
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "檢查逾期借用失敗"
+
+      });
+
+    }
+
+  }
+);
 
 // ==================================================
 // 匯出 Router
